@@ -1,0 +1,10 @@
+{
+  "title": "Path of Speed",
+  "description": "Your body learns to move quicker.",
+  "cost": 2,
+  "position": { "x": 100.0, "y": 300.0 },
+  "links": ["skillengine:wanderer"],
+  "tags": [
+    "skillengine:speed"
+  ]
+}

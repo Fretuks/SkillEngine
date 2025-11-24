@@ -1,0 +1,10 @@
+{
+  "title": "Path of Resilience",
+  "description": "Your endurance increases.\nA defensive option.",
+  "cost": 2,
+  "position": { "x": -100.0, "y": 300.0 },
+  "links": ["skillengine:wanderer"],
+  "tags": [
+    "skillengine:resilience"
+  ]
+}

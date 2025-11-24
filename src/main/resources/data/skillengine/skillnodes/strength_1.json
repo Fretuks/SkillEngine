@@ -1,0 +1,10 @@
+{
+  "title": "Basic Strength",
+  "description": "You feel your muscles tighten.\nGrants +1 Strength tag.",
+  "cost": 1,
+  "position": { "x": -150.0, "y": -50.0 },
+  "links": ["skillengine:welcome"],
+  "tags": [
+    "skillengine:strength_1"
+  ]
+}
