@@ -1,17 +1,24 @@
 package net.fretux.skillengine.client;
 
 import com.mojang.math.Axis;
-import net.fretux.skillengine.SkillEngine;
+import net.fretux.ascend.player.PlayerStatsProvider;
 import net.fretux.skillengine.network.PacketHandler;
 import net.fretux.skillengine.network.ServerboundUnlockNodePacket;
 import net.fretux.skillengine.skilltree.SkillNode;
 import net.fretux.skillengine.skilltree.SkillNodeRegistry;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SkilltreeScreen extends Screen {
 
@@ -69,17 +76,14 @@ public class SkilltreeScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
-        // Don't pan while overlay is open
         if (selectedNode != null) {
             return super.mouseDragged(mouseX, mouseY, button, dx, dy);
         }
-
         if (dragging && button == 0) {
             panX += dx;
             panY += dy;
             return true;
         }
-
         return super.mouseDragged(mouseX, mouseY, button, dx, dy);
     }
 
@@ -97,13 +101,42 @@ public class SkilltreeScreen extends Screen {
         hoveredNode = findNodeAt(mouseX, mouseY);
         drawGraph(gfx);
         if (hoveredNode != null && selectedNode == null) {
-            gfx.renderTooltip(font, hoveredNode.getTitle(), mouseX, mouseY);
+            List<Component> tooltip = new ArrayList<>();
+            tooltip.add(hoveredNode.getTitle());
+            String desc = hoveredNode.getDescription().getString();
+            List<FormattedText> wrapped = font.getSplitter().splitLines(
+                    desc,
+                    220,
+                    hoveredNode.getDescription().getStyle()
+            );
+            for (FormattedText ft : wrapped) {
+                tooltip.add(Component.literal(ft.getString()).withStyle(ChatFormatting.GRAY));
+            }
+            tooltip.add(Component.literal("Cost: " + hoveredNode.getCost())
+                    .withStyle(ChatFormatting.DARK_AQUA));
+            if (!hoveredNode.getPrereqAttributes().isEmpty()) {
+                tooltip.add(Component.literal("Requirements:")
+                        .withStyle(ChatFormatting.GOLD));
+                Minecraft.getInstance().player.getCapability(PlayerStatsProvider.PLAYER_STATS)
+                        .ifPresent(stats -> {
+                            hoveredNode.getPrereqAttributes().forEach((attr, required) -> {
+                                int current = stats.getAttributeLevel(attr);
+                                boolean ok = current >= required;
+                                tooltip.add(
+                                        Component.literal(" - " + attr + ": " + current + "/" + required)
+                                                .withStyle(ok ? ChatFormatting.GREEN : ChatFormatting.RED)
+                                );
+                            });
+                        });
+            }
+            gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
         }
         if (selectedNode != null) {
             renderOverlay(gfx, selectedNode);
         }
         super.render(gfx, mouseX, mouseY, partialTicks);
     }
+
     private void drawGraph(GuiGraphics gfx) {
         for (SkillNode node : SkillNodeRegistry.all()) {
             int[] p1 = worldToScreen(node.getX(), node.getY());
@@ -123,24 +156,27 @@ public class SkilltreeScreen extends Screen {
             int[] pos = worldToScreen(node.getX(), node.getY());
             int r = 12;
             boolean unlocked = SkilltreeClientState.isUnlocked(node.getId());
-            int color = unlocked
-                    ? 0xFF44CC44 
-                    : 0xFF444444;
+            int color = unlocked ? 0xFF44CC44 : 0xFF444444;
             if (node == hoveredNode) color = 0xFF777777;
             if (node == selectedNode) color = 0xFF999933;
             gfx.fill(pos[0] - r, pos[1] - r, pos[0] + r, pos[1] + r, color);
-            gfx.drawString(font,
-                    "",
-                    pos[0] + r + 2,
-                    pos[1] - r,
-                    0xFFFFFFFF);
+            ResourceLocation icon = node.getIcons();
+            if (icon != null) {
+                int size = 16;
+                gfx.blit(icon,
+                        pos[0] - size / 2,
+                        pos[1] - size / 2,
+                        0, 0,
+                        size, size,
+                        size, size);
+            }
         }
     }
 
     private int[] worldToScreen(float wx, float wy) {
         double sx = width / 2.0 + panX + wx * zoom;
         double sy = height / 2.0 + panY + wy * zoom;
-        return new int[] { (int) sx, (int) sy };
+        return new int[]{(int) sx, (int) sy};
     }
 
     private SkillNode findNodeAt(double mouseX, double mouseY) {
@@ -157,16 +193,42 @@ public class SkilltreeScreen extends Screen {
 
     private void renderOverlay(GuiGraphics gfx, SkillNode node) {
         int w = 240;
-        int h = 160;
+        int h = 180;
         int x = (width - w) / 2;
         int y = (height - h) / 2;
         gfx.fill(0, 0, width, height, 0x88000000);
         gfx.fill(x, y, x + w, y + h, 0xFF222222);
         gfx.drawCenteredString(font, node.getTitle(), x + w / 2, y + 10, 0xFFFFFF);
         gfx.drawWordWrap(font, node.getDescription(), x + 10, y + 30, w - 20, 0xDDDDDD);
+        final int[] textY = {y + 95};
         gfx.drawString(font,
-                Component.literal("Cost: " + node.getCost() + " skill points"),
-                x + 10, y + h - 45, 0xAAAAAA);
+                Component.literal("Cost: " + node.getCost() + " skill points")
+                        .withStyle(ChatFormatting.AQUA),
+                x + 10, textY[0],
+                0xAAAAAA);
+        textY[0] += 15;
+        if (!node.getPrereqAttributes().isEmpty()) {
+            gfx.drawString(font,
+                    Component.literal("Requirements:")
+                            .withStyle(ChatFormatting.GOLD),
+                    x + 10, textY[0],
+                    0xFFFFFF);
+            textY[0] += 12;
+            Minecraft.getInstance().player.getCapability(PlayerStatsProvider.PLAYER_STATS)
+                    .ifPresent(stats -> {
+                        for (var entry : node.getPrereqAttributes().entrySet()) {
+                            String attr = entry.getKey();
+                            int required = entry.getValue();
+                            int current = stats.getAttributeLevel(attr);
+                            boolean ok = current >= required;
+                            Component line = Component.literal(
+                                    " - " + attr + ": " + current + "/" + required
+                            ).withStyle(ok ? ChatFormatting.GREEN : ChatFormatting.RED);
+                            gfx.drawString(font, line, x + 10, textY[0], 0xFFFFFF);
+                            textY[0] += 12;
+                        }
+                    });
+        }
     }
 
     private void rebuildOverlayButtons() {

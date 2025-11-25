@@ -6,5 +6,9 @@
   "links": ["skillengine:welcome"],
   "tags": [
     "skillengine:wanderer"
-  ]
+  ],
+  "icons": "minecraft:textures/item/leather_boots.png",
+  "prerequisites": {
+    "agility": 20
+  }
 }

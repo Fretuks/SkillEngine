@@ -1,10 +1,12 @@
 {
   "title": "Basic Strength",
-  "description": "You feel your muscles tighten.\nGrants +1 Strength tag.",
+  "description": "You feel your muscles tighten.\nGrants +1 Strength.",
   "cost": 1,
   "position": { "x": -150.0, "y": -50.0 },
   "links": ["skillengine:welcome"],
-  "tags": [
-    "skillengine:strength_1"
-  ]
+  "tags": ["skillengine:strength_1"],
+  "icons": "minecraft:textures/item/iron_sword.png",
+  "prerequisites": {
+    "strength": 20
+  }
 }

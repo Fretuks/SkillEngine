@@ -1,9 +1,7 @@
 package net.fretux.skillengine.compat;
 
-import net.fretux.ascend.player.PlayerStats;
 import net.fretux.ascend.player.PlayerStatsProvider;
 import net.fretux.skillengine.SkillEngine;
-import net.fretux.skillengine.capability.PlayerSkillData;
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.TickEvent;

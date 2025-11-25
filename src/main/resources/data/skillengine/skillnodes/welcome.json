@@ -2,10 +2,15 @@
   "title": "Welcome to Ascend",
   "description": "This is your first skill node.\nClick Unlock to test the system.",
   "cost": 0,
-  "position": { "x": 0.0, "y": 0.0 },
+  "position": {
+    "x": 0.0,
+    "y": 0.0
+  },
   "links": [],
   "tags": [
     "skillengine:welcome",
     "skillengine:starter"
-  ]
+  ],
+  "icons": "minecraft:textures/item/book.png",
+  "prerequisites": {}
 }

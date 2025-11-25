@@ -47,7 +47,7 @@ public class ServerboundUnlockNodePacket {
                 SkillEngine.LOGGER.info("Received unlock request for {} from {} (points={})",
                         msg.nodeId, player.getGameProfile().getName(), data.getSkillPoints());
 
-                if (SkillLogic.canUnlock(data, node)) {
+                if (SkillLogic.canUnlock(data, player, node)) {
                     data.unlockNode(node);
                     SkillEngine.LOGGER.info("Node {} unlocked for {}", msg.nodeId, player.getGameProfile().getName());
 
