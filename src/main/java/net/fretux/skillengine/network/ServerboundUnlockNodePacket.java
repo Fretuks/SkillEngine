@@ -36,13 +36,11 @@ public class ServerboundUnlockNodePacket {
                 SkillEngine.LOGGER.warn("Unlock packet received but sender was null");
                 return;
             }
-
             SkillNode node = SkillNodeRegistry.get(msg.nodeId);
             if (node == null) {
                 SkillEngine.LOGGER.warn("Unlock packet for unknown node {}", msg.nodeId);
                 return;
             }
-
             player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
                 SkillEngine.LOGGER.info("Received unlock request for {} from {} (points={})",
                         msg.nodeId, player.getGameProfile().getName(), data.getSkillPoints());

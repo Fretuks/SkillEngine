@@ -12,9 +12,11 @@ import java.util.function.Supplier;
 public class ClientboundSyncSkillsPacket {
 
     private final Set<ResourceLocation> unlocked;
+    private final int skillPoints;
 
-    public ClientboundSyncSkillsPacket(Set<ResourceLocation> unlocked) {
+    public ClientboundSyncSkillsPacket(Set<ResourceLocation> unlocked, int skillPoints) {
         this.unlocked = unlocked;
+        this.skillPoints = skillPoints;
     }
 
     public static void encode(ClientboundSyncSkillsPacket msg, FriendlyByteBuf buf) {
@@ -22,6 +24,7 @@ public class ClientboundSyncSkillsPacket {
         for (ResourceLocation id : msg.unlocked) {
             buf.writeResourceLocation(id);
         }
+        buf.writeInt(msg.skillPoints);
     }
 
     public static ClientboundSyncSkillsPacket decode(FriendlyByteBuf buf) {
@@ -30,12 +33,14 @@ public class ClientboundSyncSkillsPacket {
         for (int i = 0; i < size; i++) {
             result.add(buf.readResourceLocation());
         }
-        return new ClientboundSyncSkillsPacket(result);
+        int points = buf.readInt();
+        return new ClientboundSyncSkillsPacket(result, points);
     }
-
+    
     public static void handle(ClientboundSyncSkillsPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             SkilltreeClientState.setUnlocked(msg.unlocked);
+            SkilltreeClientState.setCurrentSkillPoints(msg.skillPoints);
         });
         ctx.get().setPacketHandled(true);
     }
