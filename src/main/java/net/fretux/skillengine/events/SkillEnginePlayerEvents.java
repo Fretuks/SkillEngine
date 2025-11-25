@@ -17,7 +17,7 @@ public class SkillEnginePlayerEvents {
         player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
             PacketHandler.CHANNEL.send(
                     PacketDistributor.PLAYER.with(() -> player),
-                    new ClientboundSyncSkillsPacket(data.getUnlockedNodes())
+                    new ClientboundSyncSkillsPacket(data.getUnlockedNodes(), data.getSkillPoints())
             );
         });
     }

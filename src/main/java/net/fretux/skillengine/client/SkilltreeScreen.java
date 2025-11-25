@@ -98,6 +98,11 @@ public class SkilltreeScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         this.renderBackground(gfx);
+        int remaining = SkilltreeClientState.getCurrentSkillPoints();
+        Component pointsText = Component.literal(remaining + " skillpoints remaining")
+                .withStyle(ChatFormatting.YELLOW);
+        gfx.drawString(font, pointsText, 10, 10, 0xFFFFFF);
+
         hoveredNode = findNodeAt(mouseX, mouseY);
         drawGraph(gfx);
         if (hoveredNode != null && selectedNode == null) {

@@ -12,6 +12,7 @@ import java.util.Set;
 
 public class SkilltreeClientState {
     private static final Set<ResourceLocation> unlocked = new HashSet<>();
+    private static int currentSkillPoints = 0;
 
     public static void unlockNode(ResourceLocation id) {
         SkillEngine.LOGGER.info("[CLIENT] Unlocking node: {}", id);
@@ -40,5 +41,13 @@ public class SkilltreeClientState {
     public static void setUnlocked(Set<ResourceLocation> ids) {
         unlocked.clear();
         unlocked.addAll(ids);
+    }
+
+    public static void setCurrentSkillPoints(int points) {
+        currentSkillPoints = points;
+    }
+
+    public static int getCurrentSkillPoints() {
+        return currentSkillPoints;
     }
 }

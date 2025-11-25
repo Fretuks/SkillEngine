@@ -1,9 +1,12 @@
 package net.fretux.skillengine.network;
 
+import net.fretux.skillengine.capability.SkillEngineCapabilities;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.fretux.skillengine.SkillEngine;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public class PacketHandler {
@@ -34,5 +37,13 @@ public class PacketHandler {
                 .decoder(ClientboundSyncSkillsPacket::decode)
                 .consumerMainThread(ClientboundSyncSkillsPacket::handle)
                 .add();
+    }
+
+    public static void syncSkillsTo(ServerPlayer player) {
+        player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
+            ClientboundSyncSkillsPacket packet =
+                    new ClientboundSyncSkillsPacket(data.getUnlockedNodes(), data.getSkillPoints());
+            CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        });
     }
 }

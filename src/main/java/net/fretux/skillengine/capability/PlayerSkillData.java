@@ -1,6 +1,7 @@
 package net.fretux.skillengine.capability;
 
 import net.fretux.skillengine.skilltree.SkillNode;
+import net.fretux.skillengine.skilltree.SkillNodeRegistry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -80,5 +81,21 @@ public class PlayerSkillData {
 
     public Set<ResourceLocation> getUnlockedNodes() {
         return unlockedNodes;
+    }
+
+    public int getTotalSkillCost() {
+        int total = 0;
+        for (ResourceLocation id : unlockedNodes) {
+            SkillNode node = SkillNodeRegistry.get(id);
+            if (node != null) {
+                total += node.getCost();
+            }
+        }
+        return total;
+    }
+
+    public void clearAllNodes() {
+        unlockedNodes.clear();
+        activeTags.clear();
     }
 }
