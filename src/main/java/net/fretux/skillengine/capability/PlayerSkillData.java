@@ -37,8 +37,6 @@ public class PlayerSkillData {
         }
     }
 
-    /* ---------- NBT ---------- */
-
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();
         tag.putInt("SkillPoints", skillPoints);
