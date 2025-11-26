@@ -180,7 +180,7 @@ public class SkilltreeScreen extends Screen {
 
     private int[] worldToScreen(float wx, float wy) {
         double sx = width / 2.0 + panX + wx * zoom;
-        double sy = height / 2.0 + panY + wy * zoom;
+        double sy = height / 2.0 + panY - wy * zoom;
         return new int[]{(int) sx, (int) sy};
     }
 
