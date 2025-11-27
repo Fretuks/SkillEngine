@@ -10,22 +10,29 @@ import java.util.function.Supplier;
 public class ClientboundNodeUnlockedPacket {
 
     private final ResourceLocation id;
+    private final int newSkillPoints;
 
-    public ClientboundNodeUnlockedPacket(ResourceLocation id) {
+    public ClientboundNodeUnlockedPacket(ResourceLocation id, int newSkillPoints) {
         this.id = id;
+        this.newSkillPoints = newSkillPoints;
     }
 
     public static void encode(ClientboundNodeUnlockedPacket msg, FriendlyByteBuf buf) {
         buf.writeResourceLocation(msg.id);
+        buf.writeInt(msg.newSkillPoints);
     }
 
     public static ClientboundNodeUnlockedPacket decode(FriendlyByteBuf buf) {
-        return new ClientboundNodeUnlockedPacket(buf.readResourceLocation());
+        ResourceLocation id = buf.readResourceLocation();
+        int points = buf.readInt();
+        return new ClientboundNodeUnlockedPacket(id, points);
     }
 
     public static void handle(ClientboundNodeUnlockedPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
+            // Update client-side unlocked set and points immediately so UI can reflect changes this frame
             SkilltreeClientState.unlockNode(msg.id);
+            SkilltreeClientState.setCurrentSkillPoints(msg.newSkillPoints);
         });
         ctx.get().setPacketHandled(true);
     }

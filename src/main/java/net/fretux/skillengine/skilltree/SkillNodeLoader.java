@@ -38,6 +38,9 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
         SkillNodeRegistry.clear();
         jsons.forEach((id, element) -> {
             JsonObject obj = element.getAsJsonObject();
+            ResourceLocation nodeId = obj.has("id")
+                    ? new ResourceLocation(obj.get("id").getAsString())
+                    : id;
             String title = obj.get("title").getAsString();
             String description = obj.get("description").getAsString();
             int cost = obj.get("cost").getAsInt();
@@ -59,7 +62,7 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
                 }
             }
             SkillNode node = new SkillNode(
-                    id,
+                    nodeId,
                     Component.literal(title),
                     Component.literal(description),
                     cost,

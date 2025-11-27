@@ -1,4 +1,5 @@
 {
+  "id": "skillengine:welcome",
   "title": "Welcome to Ascend",
   "description": "This is your first skill node.\nClick Unlock to test the system.",
   "cost": 0,

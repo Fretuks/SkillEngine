@@ -49,9 +49,10 @@ public class ServerboundUnlockNodePacket {
                     data.unlockNode(node);
                     SkillEngine.LOGGER.info("Node {} unlocked for {}", msg.nodeId, player.getGameProfile().getName());
 
+                    // Send client an immediate update about the unlocked node and the new remaining points
                     PacketHandler.CHANNEL.send(
                             PacketDistributor.PLAYER.with(() -> player),
-                            new ClientboundNodeUnlockedPacket(node.getId())
+                            new ClientboundNodeUnlockedPacket(node.getId(), data.getSkillPoints())
                     );
                 } else {
                     SkillEngine.LOGGER.info("Cannot unlock node {} for {} (canUnlock=false)",
