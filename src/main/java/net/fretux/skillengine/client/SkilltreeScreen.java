@@ -256,7 +256,7 @@ public class SkilltreeScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Close"), btn -> {
             selectedNode = null;
             clearWidgets();
-        }).pos(x + w - 60, y + 10).size(50, 20).build());
+        }).pos(x + w - 60, y - 5).size(50, 20).build());
     }
 
     private void drawLine(GuiGraphics gfx, int x1, int y1, int x2, int y2, int color) {
