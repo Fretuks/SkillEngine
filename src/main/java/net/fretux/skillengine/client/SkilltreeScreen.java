@@ -251,7 +251,7 @@ public class SkilltreeScreen extends Screen {
                 );
                 selectedNode = null;
                 clearWidgets();
-            }).pos(x + w / 2 - 40, y + h - 30).size(80, 20).build());
+            }).pos(x + w / 2 - 40, y + h - 20).size(80, 20).build());
         }
         addRenderableWidget(Button.builder(Component.literal("Close"), btn -> {
             selectedNode = null;
