@@ -18,6 +18,7 @@ public class SkillNode {
     private final List<ResourceLocation> tags;
     private final ResourceLocation icons;
     private final Map<String, Integer> prereqAttributes;
+    private final List<ResourceLocation> exclusiveWith;
 
     public SkillNode(ResourceLocation id,
                      Component title,
@@ -27,7 +28,8 @@ public class SkillNode {
                      List<ResourceLocation> links,
                      List<ResourceLocation> tags,
                      ResourceLocation icons,
-                     Map<String, Integer> prereqAttributes) {
+                     Map<String, Integer> prereqAttributes,
+                     List<ResourceLocation> exclusiveWith){
 
         this.id = id;
         this.title = title;
@@ -39,6 +41,7 @@ public class SkillNode {
         this.tags = List.copyOf(tags);
         this.icons = icons;
         this.prereqAttributes = Map.copyOf(prereqAttributes);
+        this.exclusiveWith = List.copyOf(exclusiveWith);
     }
 
     public ResourceLocation getId() {
@@ -79,6 +82,10 @@ public class SkillNode {
 
     public Map<String, Integer> getPrereqAttributes() {
         return prereqAttributes;
+    }
+
+    public List<ResourceLocation> getExclusiveWith() {
+        return exclusiveWith;
     }
 
     public boolean isRoot() {

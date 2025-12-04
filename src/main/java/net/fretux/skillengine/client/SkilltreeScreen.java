@@ -59,6 +59,14 @@ public class SkilltreeScreen extends Screen {
         if (button == 0) {
             SkillNode clicked = findNodeAt(mouseX, mouseY);
             if (clicked != null) {
+                boolean lockedByExclusivity = clicked.getExclusiveWith().stream()
+                        .anyMatch(SkilltreeClientState::isUnlocked);
+                if (lockedByExclusivity) {
+                    Minecraft.getInstance().player.playSound(
+                            net.minecraft.sounds.SoundEvents.VILLAGER_NO, 1f, 1f
+                    );
+                    return true;
+                }
                 if (SkilltreeClientState.isUnlocked(clicked.getId())) {
                     return true;
                 }
@@ -70,7 +78,6 @@ public class SkilltreeScreen extends Screen {
             lastMouseX = mouseX;
             lastMouseY = mouseY;
         }
-
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
@@ -162,6 +169,11 @@ public class SkilltreeScreen extends Screen {
             int r = 12;
             boolean unlocked = SkilltreeClientState.isUnlocked(node.getId());
             int color = unlocked ? 0xFF44CC44 : 0xFF444444;
+            boolean lockedByExclusivity = node.getExclusiveWith().stream()
+                    .anyMatch(SkilltreeClientState::isUnlocked);
+            if (lockedByExclusivity) {
+                color = 0xFFCC3333;
+            }
             if (node == hoveredNode) color = 0xFF777777;
             if (node == selectedNode) color = 0xFF999933;
             gfx.fill(pos[0] - r, pos[1] - r, pos[0] + r, pos[1] + r, color);
@@ -197,6 +209,9 @@ public class SkilltreeScreen extends Screen {
     }
 
     private void renderOverlay(GuiGraphics gfx, SkillNode node) {
+        boolean lockedByExclusivity = node.getExclusiveWith().stream()
+                .anyMatch(SkilltreeClientState::isUnlocked);
+        if (lockedByExclusivity) return;
         int w = 240;
         int h = 180;
         int x = (width - w) / 2;

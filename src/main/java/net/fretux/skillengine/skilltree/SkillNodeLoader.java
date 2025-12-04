@@ -61,6 +61,11 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
                     prereqAttributes.put(entry.getKey(), entry.getValue().getAsInt());
                 }
             }
+            List<ResourceLocation> exclusiveWith = new ArrayList<>();
+            if (obj.has("exclusive_with")) {
+                obj.getAsJsonArray("exclusive_with").forEach(e ->
+                        exclusiveWith.add(new ResourceLocation(e.getAsString())));
+            }
             SkillNode node = new SkillNode(
                     nodeId,
                     Component.literal(title),
@@ -70,8 +75,10 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
                     links,
                     tags,
                     icons,
-                    prereqAttributes
+                    prereqAttributes,
+                    exclusiveWith
             );
+
             SkillNodeRegistry.put(node);
         });
         SkillEngine.LOGGER.info("Loaded {} skill nodes", SkillNodeRegistry.all().size());

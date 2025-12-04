@@ -17,6 +17,11 @@ public class SkillLogic {
         for (ResourceLocation neighborId : node.getLinks()) {
             if (data.isUnlocked(neighborId)) return true;
         }
+        for (ResourceLocation excl : node.getExclusiveWith()) {
+            if (data.isUnlocked(excl)) {
+                return false;
+            }
+        }
         return false;
     }
     public static boolean meetsAscendPrerequisites(Player player, SkillNode node) {
