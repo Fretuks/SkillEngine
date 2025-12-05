@@ -17,33 +17,23 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SkilltreeScreen extends Screen {
-
     private static final int NODE_RADIUS = 12;
     private static final int ABILITY_RADIUS = 12;
-
     private static final int OVERLAY_WIDTH = 240;
     private static final int OVERLAY_HEIGHT = 180;
     private static final int OVERLAY_CONTENT_HEIGHT = 160;
-
     private static final float ZOOM_STEP = 0.1f;
     private static final float LINE_THICKNESS = 2.0f;
-
     private float zoom = 1.0f;
-    private final float minZoom = 0.5f;
-    private final float maxZoom = 2.0f;
-
     private double panX = 0;
     private double panY = 0;
-
     private boolean dragging = false;
-    private double lastMouseX;
-    private double lastMouseY;
-
     private SkillNode hoveredNode = null;
     private SkillNode selectedNode = null;
     private AbilityNode hoveredAbility = null;
@@ -60,7 +50,9 @@ public class SkilltreeScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        zoom += delta * ZOOM_STEP;
+        zoom += (float) (delta * ZOOM_STEP);
+        float minZoom = 0.5f;
+        float maxZoom = 2.0f;
         zoom = Mth.clamp(zoom, minZoom, maxZoom);
         return true;
     }
@@ -74,6 +66,7 @@ public class SkilltreeScreen extends Screen {
             SkillNode clickedNode = findNodeAt(mouseX, mouseY);
             if (clickedNode != null) {
                 if (isLockedByExclusivity(clickedNode)) {
+                    assert Minecraft.getInstance().player != null;
                     Minecraft.getInstance().player.playSound(
                             net.minecraft.sounds.SoundEvents.VILLAGER_NO, 1f, 1f
                     );
@@ -97,8 +90,6 @@ public class SkilltreeScreen extends Screen {
                 return true;
             }
             dragging = true;
-            lastMouseX = mouseX;
-            lastMouseY = mouseY;
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
@@ -125,7 +116,7 @@ public class SkilltreeScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         this.renderBackground(gfx);
         renderSkillPointHeader(gfx);
         hoveredNode = findNodeAt(mouseX, mouseY);
@@ -244,6 +235,7 @@ public class SkilltreeScreen extends Screen {
         if (!node.getPrereqAttributes().isEmpty()) {
             tooltip.add(Component.literal("Requirements:")
                     .withStyle(ChatFormatting.GOLD));
+            assert Minecraft.getInstance().player != null;
             Minecraft.getInstance().player.getCapability(PlayerStatsProvider.PLAYER_STATS)
                     .ifPresent(stats -> node.getPrereqAttributes().forEach((attr, required) -> {
                         int current = stats.getAttributeLevel(attr);
@@ -287,6 +279,7 @@ public class SkilltreeScreen extends Screen {
                     0xFFFFFF
             );
             textY[0] += 12;
+            assert Minecraft.getInstance().player != null;
             Minecraft.getInstance().player.getCapability(PlayerStatsProvider.PLAYER_STATS)
                     .ifPresent(stats -> node.getPrereqAttributes().forEach((attr, required) -> {
                         int current = stats.getAttributeLevel(attr);

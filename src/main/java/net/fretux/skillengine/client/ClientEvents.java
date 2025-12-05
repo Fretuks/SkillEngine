@@ -11,6 +11,7 @@ import net.minecraftforge.fml.common.Mod;
         modid = SkillEngine.MODID,
         value = Dist.CLIENT
 )
+
 public class ClientEvents {
     @SubscribeEvent
     public static void onKeyInput(InputEvent.Key event) {

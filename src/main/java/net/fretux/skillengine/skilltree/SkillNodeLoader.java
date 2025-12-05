@@ -10,6 +10,7 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,8 +33,8 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
 
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> jsons,
-                         ResourceManager resourceManager,
-                         ProfilerFiller profiler) {
+                         @NotNull ResourceManager resourceManager,
+                         @NotNull ProfilerFiller profiler) {
         SkillEngine.LOGGER.info("Loading skill nodes...");
         SkillNodeRegistry.clear();
         jsons.forEach((id, element) -> {

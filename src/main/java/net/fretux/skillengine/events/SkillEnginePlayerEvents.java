@@ -14,17 +14,15 @@ import net.minecraftforge.network.PacketDistributor;
 public class SkillEnginePlayerEvents {
 
     private static void sync(ServerPlayer player) {
-        player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
-            PacketHandler.CHANNEL.send(
-                    PacketDistributor.PLAYER.with(() -> player),
-                    new ClientboundSyncSkillsPacket(
-                            data.getUnlockedNodes(),
-                            data.getUnlockedAbilities(),
-                            data.getSkillPoints(),
-                            data.getAbilitySlots()
-                    )
-            );
-        });
+        player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> PacketHandler.CHANNEL.send(
+                PacketDistributor.PLAYER.with(() -> player),
+                new ClientboundSyncSkillsPacket(
+                        data.getUnlockedNodes(),
+                        data.getUnlockedAbilities(),
+                        data.getSkillPoints(),
+                        data.getAbilitySlots()
+                )
+        ));
     }
 
     @SubscribeEvent

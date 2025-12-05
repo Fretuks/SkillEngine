@@ -12,17 +12,14 @@ import net.minecraftforge.network.PacketDistributor;
 import java.util.function.Supplier;
 
 public class ServerboundUnlockNodePacket {
-
     private final ResourceLocation nodeId;
-
     public ServerboundUnlockNodePacket(ResourceLocation nodeId) {
         this.nodeId = nodeId;
     }
-
     public static void encode(ServerboundUnlockNodePacket msg, FriendlyByteBuf buf) {
         buf.writeResourceLocation(msg.nodeId);
     }
-
+    
     public static ServerboundUnlockNodePacket decode(FriendlyByteBuf buf) {
         return new ServerboundUnlockNodePacket(buf.readResourceLocation());
     }
@@ -73,7 +70,6 @@ public class ServerboundUnlockNodePacket {
                 }
             });
         });
-
         ctx.get().setPacketHandled(true);
     }
 }

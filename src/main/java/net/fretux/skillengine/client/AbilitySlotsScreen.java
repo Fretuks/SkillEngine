@@ -8,6 +8,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 
 public class AbilitySlotsScreen extends Screen {
     private static final int PANEL_WIDTH = 260;
@@ -24,7 +25,6 @@ public class AbilitySlotsScreen extends Screen {
         int buttonW = 80;
         int buttonH = 20;
         int buttonX = x + PANEL_WIDTH - buttonW - 15;
-
         // Y slot = 1
         addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(1))
                 .pos(buttonX, rowY).size(buttonW, buttonH).build());
@@ -34,7 +34,6 @@ public class AbilitySlotsScreen extends Screen {
         // C slot = 3
         addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(3))
                 .pos(buttonX, rowY + 70).size(buttonW, buttonH).build());
-
         addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
                 .pos(x + PANEL_WIDTH - 70, y + PANEL_HEIGHT - 28).size(60, 20).build());
     }
@@ -54,20 +53,17 @@ public class AbilitySlotsScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(gfx);
         int x = (width - PANEL_WIDTH) / 2;
         int y = (height - PANEL_HEIGHT) / 2;
-
         gfx.fill(0, 0, width, height, 0xAA000000);
         gfx.fill(x, y, x + PANEL_WIDTH, y + PANEL_HEIGHT, 0xFF222222);
         gfx.drawCenteredString(font, Component.literal("Ability Slots"), x + PANEL_WIDTH / 2, y + 12, 0xFFFFFF);
-
         int rowY = y + 40;
         drawSlotRow(gfx, x + 15, rowY, 1, "Y");
         drawSlotRow(gfx, x + 15, rowY + 35, 2, "X");
         drawSlotRow(gfx, x + 15, rowY + 70, 3, "C");
-
         super.render(gfx, mouseX, mouseY, partialTick);
     }
 

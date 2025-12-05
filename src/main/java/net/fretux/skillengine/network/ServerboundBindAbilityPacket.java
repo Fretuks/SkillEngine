@@ -2,7 +2,6 @@ package net.fretux.skillengine.network;
 
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
 import net.minecraft.server.level.ServerPlayer;
-import net.fretux.skillengine.network.PacketHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
@@ -36,7 +35,6 @@ public class ServerboundBindAbilityPacket {
             player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data ->
                 data.bindAbility(msg.slot, msg.abilityId)
             );
-            // Sync back to client so UI reflects updated bindings
             PacketHandler.syncSkillsTo(player);
         });
         ctx.get().setPacketHandled(true);

@@ -9,9 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class PlayerSkillProvider implements ICapabilityProvider, ICapabilitySerializable<CompoundTag> {
-
     public static final ResourceLocation ID = new ResourceLocation("skillengine", "player_skill_data");
-
     private final PlayerSkillData backend = new PlayerSkillData();
     private final LazyOptional<PlayerSkillData> optional = LazyOptional.of(() -> backend);
 

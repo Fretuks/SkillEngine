@@ -19,7 +19,7 @@ public class SkillEngineCapabilities {
 
     @SubscribeEvent
     public static void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof Player player) {
+        if (event.getObject() instanceof Player) {
             SkillEngine.LOGGER.info("Attaching PlayerSkillData capability");
             event.addCapability(
                     new ResourceLocation(SkillEngine.MODID, "player_skill_data"),

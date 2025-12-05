@@ -1,6 +1,7 @@
 package net.fretux.skillengine.client;
 
 import net.fretux.skillengine.SkillEngine;
+import net.fretux.skillengine.capability.PlayerSkillData;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.network.chat.Component;
@@ -65,14 +66,7 @@ public class SkilltreeClientState {
     }
 
     public static void bindAbilityLocal(int slot, ResourceLocation abilityId) {
-        int index = slot - 1;
-        if (index < 0 || index >= abilitySlots.length) return;
-        if (abilityId != null) {
-            for (int i = 0; i < abilitySlots.length; i++) {
-                if (abilityId.equals(abilitySlots[i])) abilitySlots[i] = null;
-            }
-        }
-        abilitySlots[index] = abilityId;
+        PlayerSkillData.bindHelperFunc(slot, abilityId, abilitySlots);
     }
 
     public static void setAbilitySlots(ResourceLocation[] slots) {

@@ -9,7 +9,6 @@ import net.fretux.skillengine.client.SkilltreeClientState;
 import java.util.function.Supplier;
 
 public class ClientboundNodeUnlockedPacket {
-
     private final ResourceLocation id;
     private final int newSkillPoints;
 

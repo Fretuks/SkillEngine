@@ -10,19 +10,17 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class AbilitySelectScreen extends Screen {
-
     private final Screen parent;
-    private final int slot; // 1..3
-
+    private final int slot;
     private final List<AbilityNode> unlockedAbilities = new ArrayList<>();
     private int page = 0;
     private static final int PAGE_SIZE = 8;
-
     private static final int PANEL_WIDTH = 260;
     private static final int PANEL_HEIGHT = 220;
 
@@ -54,7 +52,6 @@ public class AbilitySelectScreen extends Screen {
         for (int i = start; i < end; i++) {
             AbilityNode node = unlockedAbilities.get(i);
             String label = node.getTitle().getString();
-            // Disable if already in this slot to avoid redundant bind
             boolean alreadyInThisSlot = SkilltreeClientState.getSlotOfAbility(node.getId()) == slot;
             Button btn = Button.builder(Component.literal(label), b -> select(node))
                     .pos(x + 15, rowY)
@@ -67,7 +64,6 @@ public class AbilitySelectScreen extends Screen {
             addRenderableWidget(btn);
             rowY += 24;
         }
-        // paging controls
         if (page > 0) {
             addRenderableWidget(Button.builder(Component.literal("< Prev"), b -> {
                 page--;
@@ -86,7 +82,6 @@ public class AbilitySelectScreen extends Screen {
 
     private void select(AbilityNode node) {
         ResourceLocation id = node.getId();
-        // optimistic client update, then send to server
         SkilltreeClientState.bindAbilityLocal(slot, id);
         PacketHandler.CHANNEL.sendToServer(new ServerboundBindAbilityPacket(id, slot));
         back();
@@ -107,7 +102,7 @@ public class AbilitySelectScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(gfx);
         int x = (width - PANEL_WIDTH) / 2;
         int y = (height - PANEL_HEIGHT) / 2;

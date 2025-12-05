@@ -23,12 +23,6 @@ public class PlayerSkillData {
     public boolean isUnlocked(ResourceLocation nodeId) {
         return unlockedNodes.contains(nodeId);
     }
-    public boolean hasTag(ResourceLocation tag) {
-        return activeTags.contains(tag);
-    }
-    public Set<ResourceLocation> getActiveTags() {
-        return activeTags;
-    }
     private final ResourceLocation[] abilitySlots = new ResourceLocation[3];
 
 
@@ -57,10 +51,10 @@ public class PlayerSkillData {
         }
         tag.put("Tags", tagList);
         ListTag abilityList = new ListTag();
-        for (int i = 0; i < abilitySlots.length; i++) {
+        for (ResourceLocation abilitySlot : abilitySlots) {
             CompoundTag t = new CompoundTag();
-            if (abilitySlots[i] != null) {
-                t.putString("Id", abilitySlots[i].toString());
+            if (abilitySlot != null) {
+                t.putString("Id", abilitySlot.toString());
             } else {
                 t.putString("Id", "");
             }
@@ -130,9 +124,12 @@ public class PlayerSkillData {
     }
 
     public void bindAbility(int slot, ResourceLocation abilityId) {
+        bindHelperFunc(slot, abilityId, abilitySlots);
+    }
+
+    public static void bindHelperFunc(int slot, ResourceLocation abilityId, ResourceLocation[] abilitySlots) {
         int index = slot - 1;
         if (index < 0 || index >= abilitySlots.length) return;
-        // Ensure the same ability is not present in multiple slots
         if (abilityId != null) {
             for (int i = 0; i < abilitySlots.length; i++) {
                 if (abilityId.equals(abilitySlots[i])) {
@@ -141,12 +138,6 @@ public class PlayerSkillData {
             }
         }
         abilitySlots[index] = abilityId;
-    }
-
-    public ResourceLocation getAbilityInSlot(int slot) {
-        int index = slot - 1;
-        if (index < 0 || index >= abilitySlots.length) return null;
-        return abilitySlots[index];
     }
 
     public ResourceLocation[] getAbilitySlots() {

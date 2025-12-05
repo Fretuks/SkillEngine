@@ -13,7 +13,7 @@ public class PacketHandler {
 
     private static final String PROTOCOL = "1";
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
-            .named(new ResourceLocation(SkillEngine.MODID, "network"))
+            .named(ResourceLocation.fromNamespaceAndPath(SkillEngine.MODID, "network"))
             .clientAcceptedVersions(PROTOCOL::equals)
             .serverAcceptedVersions(PROTOCOL::equals)
             .networkProtocolVersion(() -> PROTOCOL)
