@@ -19,5 +19,9 @@ public class ClientEvents {
 
             Minecraft.getInstance().setScreen(new SkilltreeScreen());
         }
+        if (ClientKeybinds.OPEN_ABILITIES != null &&
+                ClientKeybinds.OPEN_ABILITIES.consumeClick()) {
+            Minecraft.getInstance().setScreen(new AbilitySlotsScreen());
+        }
     }
 }

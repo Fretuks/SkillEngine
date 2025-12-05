@@ -2,9 +2,7 @@ package net.fretux.skillengine.network;
 
 import net.fretux.skillengine.SkillEngine;
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
-import net.fretux.skillengine.skilltree.SkillLogic;
-import net.fretux.skillengine.skilltree.SkillNode;
-import net.fretux.skillengine.skilltree.SkillNodeRegistry;
+import net.fretux.skillengine.skilltree.*;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,27 +35,45 @@ public class ServerboundUnlockNodePacket {
                 return;
             }
             SkillNode node = SkillNodeRegistry.get(msg.nodeId);
-            if (node == null) {
-                SkillEngine.LOGGER.warn("Unlock packet for unknown node {}", msg.nodeId);
+            AbilityNode ability = AbilityNodeRegistry.get(msg.nodeId);
+            if (node == null && ability == null) {
+                SkillEngine.LOGGER.warn("Unlock packet for unknown node or ability {}", msg.nodeId);
                 return;
             }
             player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
-                SkillEngine.LOGGER.info("Received unlock request for {} from {} (points={})",
-                        msg.nodeId, player.getGameProfile().getName(), data.getSkillPoints());
+                if (node != null) {
+                    SkillEngine.LOGGER.info("Received skill unlock request for {} from {} (points={})",
+                            msg.nodeId, player.getGameProfile().getName(), data.getSkillPoints());
+                    if (SkillLogic.canUnlock(data, player, node)) {
+                        data.unlockNode(node);
 
-                if (SkillLogic.canUnlock(data, player, node)) {
-                    data.unlockNode(node);
-                    SkillEngine.LOGGER.info("Node {} unlocked for {}", msg.nodeId, player.getGameProfile().getName());
-                    PacketHandler.CHANNEL.send(
-                            PacketDistributor.PLAYER.with(() -> player),
-                            new ClientboundNodeUnlockedPacket(node.getId(), data.getSkillPoints())
-                    );
-                } else {
-                    SkillEngine.LOGGER.info("Cannot unlock node {} for {} (canUnlock=false)",
-                            msg.nodeId, player.getGameProfile().getName());
+                        PacketHandler.CHANNEL.send(
+                                PacketDistributor.PLAYER.with(() -> player),
+                                new ClientboundNodeUnlockedPacket(node.getId(), data.getSkillPoints())
+                        );
+                    } else {
+                        SkillEngine.LOGGER.info("Cannot unlock skill node {} for {}",
+                                msg.nodeId, player.getGameProfile().getName());
+                    }
+                    return;
+                }
+                if (ability != null) {
+                    SkillEngine.LOGGER.info("Received ability unlock request for {} from {} (points={})",
+                            msg.nodeId, player.getGameProfile().getName(), data.getSkillPoints());
+                    if (!data.isAbilityUnlocked(ability.getId())) {
+                        data.unlockAbility(ability);
+                        PacketHandler.CHANNEL.send(
+                                PacketDistributor.PLAYER.with(() -> player),
+                                new ClientboundNodeUnlockedPacket(ability.getId(), data.getSkillPoints())
+                        );
+                    } else {
+                        SkillEngine.LOGGER.info("Ability {} already unlocked for {}",
+                                msg.nodeId, player.getGameProfile().getName());
+                    }
                 }
             });
         });
+
         ctx.get().setPacketHandled(true);
     }
 }

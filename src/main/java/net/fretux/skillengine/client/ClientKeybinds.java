@@ -15,6 +15,7 @@ import org.lwjgl.glfw.GLFW;
 )
 public class ClientKeybinds {
     public static KeyMapping OPEN_SKILLTREE;
+    public static KeyMapping OPEN_ABILITIES;
 
     @SubscribeEvent
     public static void registerKeys(RegisterKeyMappingsEvent event) {
@@ -24,5 +25,12 @@ public class ClientKeybinds {
                 "key.categories.ui"
         );
         event.register(OPEN_SKILLTREE);
+
+        OPEN_ABILITIES = new KeyMapping(
+                "key.skillengine.openabilities",
+                GLFW.GLFW_KEY_M,
+                "key.categories.ui"
+        );
+        event.register(OPEN_ABILITIES);
     }
 }

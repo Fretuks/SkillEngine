@@ -1,5 +1,6 @@
 package net.fretux.skillengine.network;
 
+import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
@@ -30,8 +31,10 @@ public class ClientboundNodeUnlockedPacket {
 
     public static void handle(ClientboundNodeUnlockedPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            // Update client-side unlocked set and points immediately so UI can reflect changes this frame
-            SkilltreeClientState.unlockNode(msg.id);
+            if (AbilityNodeRegistry.get(msg.id) != null)
+                SkilltreeClientState.unlockAbility(msg.id);
+            else
+                SkilltreeClientState.unlockNode(msg.id);
             SkilltreeClientState.setCurrentSkillPoints(msg.newSkillPoints);
         });
         ctx.get().setPacketHandled(true);

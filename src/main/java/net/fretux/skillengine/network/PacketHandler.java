@@ -37,12 +37,22 @@ public class PacketHandler {
                 .decoder(ClientboundSyncSkillsPacket::decode)
                 .consumerMainThread(ClientboundSyncSkillsPacket::handle)
                 .add();
+        CHANNEL.messageBuilder(ServerboundBindAbilityPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ServerboundBindAbilityPacket::encode)
+                .decoder(ServerboundBindAbilityPacket::decode)
+                .consumerMainThread(ServerboundBindAbilityPacket::handle)
+                .add();
     }
 
     public static void syncSkillsTo(ServerPlayer player) {
         player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
             ClientboundSyncSkillsPacket packet =
-                    new ClientboundSyncSkillsPacket(data.getUnlockedNodes(), data.getSkillPoints());
+                    new ClientboundSyncSkillsPacket(
+                            data.getUnlockedNodes(),
+                            data.getUnlockedAbilities(),
+                            data.getSkillPoints(),
+                            data.getAbilitySlots()
+                    );
             CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
         });
     }

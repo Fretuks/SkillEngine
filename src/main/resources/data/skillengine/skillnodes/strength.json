@@ -1,0 +1,17 @@
+﻿{
+  "id": "skillengine:strength",
+  "title": "Strength",
+  "description": "Stronk",
+  "cost": 0,
+  "position": {
+    "x": 45, 
+    "y": 45
+  },
+  "links": ["skillengine:welcome"],
+  "tags": [
+    "skillengine:strength",
+    "skillengine:stronk"
+  ],
+  "icons": "minecraft:textures/item/book.png",
+  "prerequisites": {}
+}

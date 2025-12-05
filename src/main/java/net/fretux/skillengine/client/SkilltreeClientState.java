@@ -12,18 +12,17 @@ import java.util.Set;
 
 public class SkilltreeClientState {
     private static final Set<ResourceLocation> unlocked = new HashSet<>();
+    private static final Set<ResourceLocation> unlockedAbilities = new HashSet<>();
     private static int currentSkillPoints = 0;
+    private static final ResourceLocation[] abilitySlots = new ResourceLocation[3];
 
     public static void unlockNode(ResourceLocation id) {
         SkillEngine.LOGGER.info("[CLIENT] Unlocking node: {}", id);
         unlocked.add(id);
-
         Minecraft mc = Minecraft.getInstance();
-
         if (mc.player != null) {
             mc.player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
         }
-
         mc.getToasts().addToast(
                 SystemToast.multiline(
                         mc,
@@ -43,11 +42,56 @@ public class SkilltreeClientState {
         unlocked.addAll(ids);
     }
 
+    public static void setUnlockedAbilities(Set<ResourceLocation> abilities) {
+        unlockedAbilities.clear();
+        unlockedAbilities.addAll(abilities);
+    }
+
     public static void setCurrentSkillPoints(int points) {
         currentSkillPoints = points;
     }
 
     public static int getCurrentSkillPoints() {
         return currentSkillPoints;
+    }
+
+    public static boolean isAbilityUnlocked(ResourceLocation id) {
+        return unlockedAbilities.contains(id);
+    }
+
+
+    public static void unlockAbility(ResourceLocation id) {
+        unlockedAbilities.add(id);
+    }
+
+    public static void bindAbilityLocal(int slot, ResourceLocation abilityId) {
+        int index = slot - 1;
+        if (index < 0 || index >= abilitySlots.length) return;
+        if (abilityId != null) {
+            for (int i = 0; i < abilitySlots.length; i++) {
+                if (abilityId.equals(abilitySlots[i])) abilitySlots[i] = null;
+            }
+        }
+        abilitySlots[index] = abilityId;
+    }
+
+    public static void setAbilitySlots(ResourceLocation[] slots) {
+        for (int i = 0; i < abilitySlots.length; i++) {
+            abilitySlots[i] = (slots != null && i < slots.length) ? slots[i] : null;
+        }
+    }
+
+    public static ResourceLocation getAbilityInSlot(int slot) {
+        int index = slot - 1;
+        if (index < 0 || index >= abilitySlots.length) return null;
+        return abilitySlots[index];
+    }
+
+    public static int getSlotOfAbility(ResourceLocation abilityId) {
+        if (abilityId == null) return -1;
+        for (int i = 0; i < abilitySlots.length; i++) {
+            if (abilityId.equals(abilitySlots[i])) return i + 1;
+        }
+        return -1;
     }
 }
