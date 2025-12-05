@@ -17,20 +17,73 @@ public class PlayerSkillData {
     private final Set<ResourceLocation> unlockedNodes = new HashSet<>();
     private final Set<ResourceLocation> unlockedAbilities = new HashSet<>();
     private final Set<ResourceLocation> activeTags = new HashSet<>();
+    private final ResourceLocation[] abilitySlots = new ResourceLocation[3];
 
     public int getSkillPoints() { return skillPoints; }
     public void addSkillPoints(int amount) { skillPoints += amount; }
+
     public boolean isUnlocked(ResourceLocation nodeId) {
         return unlockedNodes.contains(nodeId);
     }
-    private final ResourceLocation[] abilitySlots = new ResourceLocation[3];
-
 
     public void unlockNode(SkillNode node) {
+        if (node == null) return;
         if (unlockedNodes.add(node.getId())) {
             activeTags.addAll(node.getTags());
             skillPoints -= node.getCost();
         }
+    }
+    
+    public Set<ResourceLocation> getUnlockedNodes() {
+        return unlockedNodes;
+    }
+
+    public boolean hasTag(ResourceLocation tag) {
+        return activeTags.contains(tag);
+    }
+
+    public Set<ResourceLocation> getActiveTags() {
+        return activeTags;
+    }
+
+    public boolean isAbilityUnlocked(ResourceLocation id) {
+        return unlockedAbilities.contains(id);
+    }
+
+    public void unlockAbility(AbilityNode ability) {
+        if (ability == null) return;
+        unlockedAbilities.add(ability.getId());
+    }
+
+    public Set<ResourceLocation> getUnlockedAbilities() {
+        return unlockedAbilities;
+    }
+
+    public void bindAbility(int slot, ResourceLocation abilityId) {
+        bindHelper(slot, abilityId, abilitySlots);
+    }
+
+    public static void bindHelper(int slot, ResourceLocation abilityId, ResourceLocation[] slots) {
+        int index = slot - 1;
+        if (index < 0 || index >= slots.length) return;
+        if (abilityId != null) {
+            for (int i = 0; i < slots.length; i++) {
+                if (abilityId.equals(slots[i])) {
+                    slots[i] = null;
+                }
+            }
+        }
+        slots[index] = abilityId;
+    }
+
+    public ResourceLocation getAbilityInSlot(int slot) {
+        int index = slot - 1;
+        if (index < 0 || index >= abilitySlots.length) return null;
+        return abilitySlots[index];
+    }
+
+    public ResourceLocation[] getAbilitySlots() {
+        return abilitySlots.clone();
     }
 
     public CompoundTag save() {
@@ -42,78 +95,63 @@ public class PlayerSkillData {
             t.putString("Id", id.toString());
             unlockedList.add(t);
         }
-        tag.put("Unlocked", unlockedList);
-        ListTag tagList = new ListTag();
+        tag.put("UnlockedNodes", unlockedList);
+        ListTag tagsList = new ListTag();
         for (ResourceLocation id : activeTags) {
             CompoundTag t = new CompoundTag();
             t.putString("Tag", id.toString());
-            tagList.add(t);
+            tagsList.add(t);
         }
-        tag.put("Tags", tagList);
-        ListTag abilityList = new ListTag();
-        for (ResourceLocation abilitySlot : abilitySlots) {
+        tag.put("ActiveTags", tagsList);
+        ListTag slotList = new ListTag();
+        for (ResourceLocation slot : abilitySlots) {
             CompoundTag t = new CompoundTag();
-            if (abilitySlot != null) {
-                t.putString("Id", abilitySlot.toString());
-            } else {
-                t.putString("Id", "");
-            }
-            abilityList.add(t);
+            t.putString("Id", slot == null ? "" : slot.toString());
+            slotList.add(t);
         }
-        tag.put("AbilitySlots", abilityList);
-        ListTag unlockedAbilitiesList = new ListTag();
+        tag.put("AbilitySlots", slotList);
+        ListTag abilityList = new ListTag();
         for (ResourceLocation id : unlockedAbilities) {
             CompoundTag t = new CompoundTag();
             t.putString("Id", id.toString());
-            unlockedAbilitiesList.add(t);
+            abilityList.add(t);
         }
-        tag.put("UnlockedAbilities", unlockedAbilitiesList);
+        tag.put("UnlockedAbilities", abilityList);
         return tag;
     }
 
     public void load(CompoundTag tag) {
         skillPoints = tag.getInt("SkillPoints");
         unlockedNodes.clear();
-        activeTags.clear();
         unlockedAbilities.clear();
-        ListTag unlockedList = tag.getList("Unlocked", Tag.TAG_COMPOUND);
-        for (Tag t : unlockedList) {
-            CompoundTag c = (CompoundTag) t;
-            unlockedNodes.add(new ResourceLocation(c.getString("Id")));
+        activeTags.clear();
+        ListTag nodeList = tag.getList("UnlockedNodes", Tag.TAG_COMPOUND);
+        for (Tag t : nodeList) {
+            ResourceLocation id = new ResourceLocation(((CompoundTag)t).getString("Id"));
+            unlockedNodes.add(id);
+            SkillNode node = SkillNodeRegistry.get(id);
+            if (node != null) activeTags.addAll(node.getTags());
         }
-        ListTag tagList = tag.getList("Tags", Tag.TAG_COMPOUND);
+        ListTag tagList = tag.getList("ActiveTags", Tag.TAG_COMPOUND);
         for (Tag t : tagList) {
-            CompoundTag c = (CompoundTag) t;
-            activeTags.add(new ResourceLocation(c.getString("Tag")));
+            activeTags.add(new ResourceLocation(((CompoundTag)t).getString("Tag")));
         }
-        ListTag abilityList = tag.getList("AbilitySlots", Tag.TAG_COMPOUND);
-        for (int i = 0; i < abilitySlots.length && i < abilityList.size(); i++) {
-            CompoundTag t = abilityList.getCompound(i);
-            String id = t.getString("Id");
-            if (!id.isEmpty()) {
-                abilitySlots[i] = new ResourceLocation(id);
-            } else {
-                abilitySlots[i] = null;
-            }
+        ListTag slots = tag.getList("AbilitySlots", Tag.TAG_COMPOUND);
+        for (int i = 0; i < 3 && i < slots.size(); i++) {
+            String id = slots.getCompound(i).getString("Id");
+            abilitySlots[i] = id.isEmpty() ? null : new ResourceLocation(id);
         }
-        ListTag unlockedAbilitiesList = tag.getList("UnlockedAbilities", Tag.TAG_COMPOUND);
-        for (Tag t : unlockedAbilitiesList) {
-            CompoundTag c = (CompoundTag) t;
-            unlockedAbilities.add(new ResourceLocation(c.getString("Id")));
+        ListTag abilityList = tag.getList("UnlockedAbilities", Tag.TAG_COMPOUND);
+        for (Tag t : abilityList) {
+            unlockedAbilities.add(new ResourceLocation(((CompoundTag)t).getString("Id")));
         }
     }
-
-    public Set<ResourceLocation> getUnlockedNodes() {
-        return unlockedNodes;
-    }
-
+    
     public int getTotalSkillCost() {
         int total = 0;
         for (ResourceLocation id : unlockedNodes) {
             SkillNode node = SkillNodeRegistry.get(id);
-            if (node != null) {
-                total += node.getCost();
-            }
+            if (node != null) total += node.getCost();
         }
         return total;
     }
@@ -121,38 +159,6 @@ public class PlayerSkillData {
     public void clearAllNodes() {
         unlockedNodes.clear();
         activeTags.clear();
-    }
-
-    public void bindAbility(int slot, ResourceLocation abilityId) {
-        bindHelperFunc(slot, abilityId, abilitySlots);
-    }
-
-    public static void bindHelperFunc(int slot, ResourceLocation abilityId, ResourceLocation[] abilitySlots) {
-        int index = slot - 1;
-        if (index < 0 || index >= abilitySlots.length) return;
-        if (abilityId != null) {
-            for (int i = 0; i < abilitySlots.length; i++) {
-                if (abilityId.equals(abilitySlots[i])) {
-                    abilitySlots[i] = null;
-                }
-            }
-        }
-        abilitySlots[index] = abilityId;
-    }
-
-    public ResourceLocation[] getAbilitySlots() {
-        return abilitySlots.clone();
-    }
-
-    public boolean isAbilityUnlocked(ResourceLocation id) {
-        return unlockedAbilities.contains(id);
-    }
-
-    public void unlockAbility(AbilityNode node) {
-        unlockedAbilities.add(node.getId());
-    }
-    
-    public Set<ResourceLocation> getUnlockedAbilities() {
-        return unlockedAbilities;
+        unlockedAbilities.clear();
     }
 }

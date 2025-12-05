@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -66,7 +67,7 @@ public class SkilltreeClientState {
     }
 
     public static void bindAbilityLocal(int slot, ResourceLocation abilityId) {
-        PlayerSkillData.bindHelperFunc(slot, abilityId, abilitySlots);
+        PlayerSkillData.bindHelper(slot, abilityId, abilitySlots);
     }
 
     public static void setAbilitySlots(ResourceLocation[] slots) {
@@ -87,5 +88,9 @@ public class SkilltreeClientState {
             if (abilityId.equals(abilitySlots[i])) return i + 1;
         }
         return -1;
+    }
+
+    public static ResourceLocation[] getAbilitySlots() {
+        return Arrays.copyOf(abilitySlots, abilitySlots.length);
     }
 }
