@@ -10,10 +10,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 public class AbilitySlotsScreen extends Screen {
-
     private static final int PANEL_WIDTH = 260;
     private static final int PANEL_HEIGHT = 180;
-
     public AbilitySlotsScreen() {
         super(Component.literal("Abilities"));
     }
@@ -22,7 +20,6 @@ public class AbilitySlotsScreen extends Screen {
     protected void init() {
         int x = (width - PANEL_WIDTH) / 2;
         int y = (height - PANEL_HEIGHT) / 2;
-
         int rowY = y + 40;
         int buttonW = 80;
         int buttonH = 20;
