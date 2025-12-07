@@ -2,6 +2,7 @@ package net.fretux.skillengine.skilltree;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 
@@ -45,4 +46,8 @@ public class AbilityNode {
     public List<ResourceLocation> getTags() { return tags; }
     public ResourceLocation getIcon() { return icon; }
     public int getCooldown() { return cooldown; }
+
+    public void execute(ServerPlayer player) {
+        player.sendSystemMessage(Component.literal("Activated ability: " + id));
+    }
 }

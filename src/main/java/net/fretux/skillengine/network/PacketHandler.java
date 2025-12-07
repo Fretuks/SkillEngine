@@ -42,6 +42,16 @@ public class PacketHandler {
                 .decoder(ServerboundBindAbilityPacket::decode)
                 .consumerMainThread(ServerboundBindAbilityPacket::handle)
                 .add();
+        CHANNEL.messageBuilder(ClientboundSyncCooldownPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ClientboundSyncCooldownPacket::encode)
+                .decoder(ClientboundSyncCooldownPacket::decode)
+                .consumerMainThread(ClientboundSyncCooldownPacket::handle)
+                .add();
+        CHANNEL.messageBuilder(ServerboundActivateAbilityPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ServerboundActivateAbilityPacket::encode)
+                .decoder(ServerboundActivateAbilityPacket::decode)
+                .consumerMainThread(ServerboundActivateAbilityPacket::handle)
+                .add();
     }
 
     public static void syncSkillsTo(ServerPlayer player) {

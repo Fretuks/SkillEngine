@@ -18,9 +18,15 @@ public class PlayerSkillData {
     private final Set<ResourceLocation> unlockedAbilities = new HashSet<>();
     private final Set<ResourceLocation> activeTags = new HashSet<>();
     private final ResourceLocation[] abilitySlots = new ResourceLocation[3];
+    private final int[] abilityCooldowns = new int[3];
 
-    public int getSkillPoints() { return skillPoints; }
-    public void addSkillPoints(int amount) { skillPoints += amount; }
+    public int getSkillPoints() {
+        return skillPoints;
+    }
+
+    public void addSkillPoints(int amount) {
+        skillPoints += amount;
+    }
 
     public boolean isUnlocked(ResourceLocation nodeId) {
         return unlockedNodes.contains(nodeId);
@@ -33,7 +39,7 @@ public class PlayerSkillData {
             skillPoints -= node.getCost();
         }
     }
-    
+
     public Set<ResourceLocation> getUnlockedNodes() {
         return unlockedNodes;
     }
@@ -86,6 +92,26 @@ public class PlayerSkillData {
         return abilitySlots.clone();
     }
 
+    public void setCooldown(int slot, int ticks) {
+        int idx = slot - 1;
+        if (idx < 0 || idx >= abilityCooldowns.length) return;
+        abilityCooldowns[idx] = ticks;
+    }
+
+    public int getCooldown(int slot) {
+        int idx = slot - 1;
+        if (idx < 0 || idx >= abilityCooldowns.length) return 0;
+        return abilityCooldowns[idx];
+    }
+
+    public void tickCooldowns() {
+        for (int i = 0; i < abilityCooldowns.length; i++) {
+            if (abilityCooldowns[i] > 0) {
+                abilityCooldowns[i]--;
+            }
+        }
+    }
+
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();
         tag.putInt("SkillPoints", skillPoints);
@@ -117,6 +143,13 @@ public class PlayerSkillData {
             abilityList.add(t);
         }
         tag.put("UnlockedAbilities", abilityList);
+        ListTag cdList = new ListTag();
+        for (int cd : abilityCooldowns) {
+            CompoundTag t = new CompoundTag();
+            t.putInt("CD", cd);
+            cdList.add(t);
+        }
+        tag.put("AbilityCooldowns", cdList);
         return tag;
     }
 
@@ -127,14 +160,14 @@ public class PlayerSkillData {
         activeTags.clear();
         ListTag nodeList = tag.getList("UnlockedNodes", Tag.TAG_COMPOUND);
         for (Tag t : nodeList) {
-            ResourceLocation id = new ResourceLocation(((CompoundTag)t).getString("Id"));
+            ResourceLocation id = new ResourceLocation(((CompoundTag) t).getString("Id"));
             unlockedNodes.add(id);
             SkillNode node = SkillNodeRegistry.get(id);
             if (node != null) activeTags.addAll(node.getTags());
         }
         ListTag tagList = tag.getList("ActiveTags", Tag.TAG_COMPOUND);
         for (Tag t : tagList) {
-            activeTags.add(new ResourceLocation(((CompoundTag)t).getString("Tag")));
+            activeTags.add(new ResourceLocation(((CompoundTag) t).getString("Tag")));
         }
         ListTag slots = tag.getList("AbilitySlots", Tag.TAG_COMPOUND);
         for (int i = 0; i < 3 && i < slots.size(); i++) {
@@ -143,10 +176,15 @@ public class PlayerSkillData {
         }
         ListTag abilityList = tag.getList("UnlockedAbilities", Tag.TAG_COMPOUND);
         for (Tag t : abilityList) {
-            unlockedAbilities.add(new ResourceLocation(((CompoundTag)t).getString("Id")));
+            unlockedAbilities.add(new ResourceLocation(((CompoundTag) t).getString("Id")));
+        }
+        ListTag cdList = tag.getList("AbilityCooldowns", Tag.TAG_COMPOUND);
+        for (int i = 0; i < abilityCooldowns.length && i < cdList.size(); i++) {
+            CompoundTag t = cdList.getCompound(i);
+            abilityCooldowns[i] = t.getInt("CD");
         }
     }
-    
+
     public int getTotalSkillCost() {
         int total = 0;
         for (ResourceLocation id : unlockedNodes) {

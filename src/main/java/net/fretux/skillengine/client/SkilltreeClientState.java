@@ -17,6 +17,15 @@ public class SkilltreeClientState {
     private static final Set<ResourceLocation> unlockedAbilities = new HashSet<>();
     private static int currentSkillPoints = 0;
     private static final ResourceLocation[] abilitySlots = new ResourceLocation[3];
+    private static final int[] clientCooldowns = new int[3];
+
+    public static void updateCooldown(int slot, int cd) {
+        clientCooldowns[slot - 1] = cd;
+    }
+
+    public static int getClientCooldown(int slot) {
+        return clientCooldowns[slot - 1];
+    }
 
     public static void unlockNode(ResourceLocation id) {
         SkillEngine.LOGGER.info("[CLIENT] Unlocking node: {}", id);

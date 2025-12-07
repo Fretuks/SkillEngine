@@ -246,6 +246,14 @@ public class SkilltreeScreen extends Screen {
                         );
                     }));
         }
+        if (!hoveredNode.getExclusiveWith().isEmpty()) {
+            tooltip.add(Component.literal("Mutually Exclusive with:")
+                    .withStyle(ChatFormatting.RED));
+            for (ResourceLocation ex : hoveredNode.getExclusiveWith()) {
+                tooltip.add(Component.literal(" - " + ex.toString())
+                        .withStyle(ChatFormatting.RED));
+            }
+        }
         gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
     }
 
