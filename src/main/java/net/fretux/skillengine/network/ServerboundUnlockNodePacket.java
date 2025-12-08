@@ -1,6 +1,9 @@
 package net.fretux.skillengine.network;
 
+import net.fretux.ascend.player.PlayerStats;
+import net.fretux.ascend.player.PlayerStatsProvider;
 import net.fretux.skillengine.SkillEngine;
+import net.fretux.skillengine.capability.PlayerSkillData;
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
 import net.fretux.skillengine.skilltree.*;
 import net.minecraft.network.FriendlyByteBuf;
@@ -9,67 +12,94 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 public class ServerboundUnlockNodePacket {
     private final ResourceLocation nodeId;
+
     public ServerboundUnlockNodePacket(ResourceLocation nodeId) {
         this.nodeId = nodeId;
     }
+
     public static void encode(ServerboundUnlockNodePacket msg, FriendlyByteBuf buf) {
         buf.writeResourceLocation(msg.nodeId);
     }
-    
+
     public static ServerboundUnlockNodePacket decode(FriendlyByteBuf buf) {
         return new ServerboundUnlockNodePacket(buf.readResourceLocation());
     }
 
     public static void handle(ServerboundUnlockNodePacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
+
             ServerPlayer player = ctx.get().getSender();
-            if (player == null) {
-                SkillEngine.LOGGER.warn("Unlock packet received but sender was null");
-                return;
-            }
+            if (player == null) return;
+
             SkillNode node = SkillNodeRegistry.get(msg.nodeId);
             AbilityNode ability = AbilityNodeRegistry.get(msg.nodeId);
-            if (node == null && ability == null) {
-                SkillEngine.LOGGER.warn("Unlock packet for unknown node or ability {}", msg.nodeId);
-                return;
-            }
-            player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
-                if (node != null) {
-                    SkillEngine.LOGGER.info("Received skill unlock request for {} from {} (points={})",
-                            msg.nodeId, player.getGameProfile().getName(), data.getSkillPoints());
-                    if (SkillLogic.canUnlock(data, player, node)) {
-                        data.unlockNode(node);
 
+            player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
+
+                // === SKILL NODE UNLOCK ===
+                if (node != null) {
+                    if (canUnlockSkillNode(player, data, node)) {
+                        data.unlockNode(node);
+                        PacketHandler.syncSkillsTo(player);
                         PacketHandler.CHANNEL.send(
                                 PacketDistributor.PLAYER.with(() -> player),
                                 new ClientboundNodeUnlockedPacket(node.getId(), data.getSkillPoints())
                         );
                     } else {
-                        SkillEngine.LOGGER.info("Cannot unlock skill node {} for {}",
-                                msg.nodeId, player.getGameProfile().getName());
+                        SkillEngine.LOGGER.info("[SKILLENGINE] Rejecting unlock for {}", node.getId());
                     }
                     return;
                 }
+
+                // === ABILITY NODE UNLOCK ===
                 if (ability != null) {
-                    SkillEngine.LOGGER.info("Received ability unlock request for {} from {} (points={})",
-                            msg.nodeId, player.getGameProfile().getName(), data.getSkillPoints());
-                    if (!data.isAbilityUnlocked(ability.getId())) {
+                    if (canUnlockAbility(player, data, ability)) {
                         data.unlockAbility(ability);
+                        PacketHandler.syncSkillsTo(player);
                         PacketHandler.CHANNEL.send(
                                 PacketDistributor.PLAYER.with(() -> player),
                                 new ClientboundNodeUnlockedPacket(ability.getId(), data.getSkillPoints())
                         );
                     } else {
-                        SkillEngine.LOGGER.info("Ability {} already unlocked for {}",
-                                msg.nodeId, player.getGameProfile().getName());
+                        SkillEngine.LOGGER.info("[SKILLENGINE] Rejecting ability unlock for {}", ability.getId());
                     }
                 }
             });
         });
         ctx.get().setPacketHandled(true);
+    }
+    
+    private static boolean canUnlockSkillNode(ServerPlayer player, PlayerSkillData data, SkillNode node) {
+        if (data.isUnlocked(node.getId())) return false;
+        if (data.getSkillPoints() < node.getCost()) return false;
+        for (ResourceLocation ex : node.getExclusiveWith()) {
+            if (data.isUnlocked(ex)) return false;
+        }
+        for (ResourceLocation parent : node.getLinks()) {
+            if (!data.isUnlocked(parent)) return false;
+        }
+        PlayerStats stats = player.getCapability(PlayerStatsProvider.PLAYER_STATS).orElse(null);
+        if (stats == null) return false;
+        for (var e : node.getPrereqAttributes().entrySet()) {
+            if (stats.getAttributeLevel(e.getKey()) < e.getValue()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    private static boolean canUnlockAbility(ServerPlayer player, PlayerSkillData data, AbilityNode ability) {
+        if (data.isAbilityUnlocked(ability.getId())) return false;
+        for (ResourceLocation parent : ability.getLinks()) {
+            boolean ok = data.isUnlocked(parent) || data.isAbilityUnlocked(parent);
+            if (!ok) return false;
+        }
+        return true;
     }
 }
