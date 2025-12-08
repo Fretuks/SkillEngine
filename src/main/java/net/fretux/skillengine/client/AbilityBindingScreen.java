@@ -31,23 +31,23 @@ public class AbilityBindingScreen extends Screen {
         int buttonX = x + 20;
         int buttonY = y + 80;
         int boundSlot = SkilltreeClientState.getSlotOfAbility(ability.getId());
-        Button yBtn = addRenderableWidget(Button.builder(Component.literal("Bind to Y"),
+        Button yBtn = addRenderableWidget(Button.builder(Component.literal("Bind to First Slot"),
                 b -> bind(1)).pos(buttonX, buttonY).size(80, 20).build());
         if (boundSlot == 1) {
             yBtn.active = false;
-            yBtn.setMessage(Component.literal("Bound to Y"));
+            yBtn.setMessage(Component.literal("Bound to First Slot"));
         }
-        Button xBtn = addRenderableWidget(Button.builder(Component.literal("Bind to X"),
+        Button xBtn = addRenderableWidget(Button.builder(Component.literal("Bind to Second Slot"),
                 b -> bind(2)).pos(buttonX + 90, buttonY).size(80, 20).build());
         if (boundSlot == 2) {
             xBtn.active = false;
-            xBtn.setMessage(Component.literal("Bound to X"));
+            xBtn.setMessage(Component.literal("Bound to Second Slot"));
         }
-        Button cBtn = addRenderableWidget(Button.builder(Component.literal("Bind to C"),
+        Button cBtn = addRenderableWidget(Button.builder(Component.literal("Bind to Third Slot"),
                 b -> bind(3)).pos(buttonX, buttonY + 30).size(80, 20).build());
         if (boundSlot == 3) {
             cBtn.active = false;
-            cBtn.setMessage(Component.literal("Bound to C"));
+            cBtn.setMessage(Component.literal("Bound to Third Slot"));
         }
         addRenderableWidget(Button.builder(Component.literal("Cancel"),
                 b -> onClose()).pos(buttonX + 90, buttonY + 30).size(80, 20).build());
