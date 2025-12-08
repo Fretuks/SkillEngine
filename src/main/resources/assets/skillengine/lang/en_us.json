@@ -1,5 +1,8 @@
 {
   "key.skillengine.openskilltree": "Open Skilltree",
-  "key.skillengine.openabilities": "Open Ability Screen"
+  "key.skillengine.openabilities": "Open Ability Screen",
+  "key.skillengine.ability1": "Use Skill in first Skilltree Slot",
+  "key.skillengine.ability2": "Use Skill in second Skilltree Slot",
+  "key.skillengine.ability3": "Use Skill in third Skilltree Slot"
 }
 
