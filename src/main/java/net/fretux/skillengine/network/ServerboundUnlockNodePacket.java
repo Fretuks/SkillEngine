@@ -12,7 +12,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 public class ServerboundUnlockNodePacket {
@@ -32,16 +31,11 @@ public class ServerboundUnlockNodePacket {
 
     public static void handle(ServerboundUnlockNodePacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
-
             SkillNode node = SkillNodeRegistry.get(msg.nodeId);
             AbilityNode ability = AbilityNodeRegistry.get(msg.nodeId);
-
             player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
-
-                // === SKILL NODE UNLOCK ===
                 if (node != null) {
                     if (canUnlockSkillNode(player, data, node)) {
                         data.unlockNode(node);
@@ -55,8 +49,6 @@ public class ServerboundUnlockNodePacket {
                     }
                     return;
                 }
-
-                // === ABILITY NODE UNLOCK ===
                 if (ability != null) {
                     if (canUnlockAbility(player, data, ability)) {
                         data.unlockAbility(ability);
@@ -73,20 +65,41 @@ public class ServerboundUnlockNodePacket {
         });
         ctx.get().setPacketHandled(true);
     }
-    
+
     private static boolean canUnlockSkillNode(ServerPlayer player, PlayerSkillData data, SkillNode node) {
-        if (data.isUnlocked(node.getId())) return false;
-        if (data.getSkillPoints() < node.getCost()) return false;
+        if (data.isUnlocked(node.getId())) {
+            SkillEngine.LOGGER.debug("cannot unlock {}: already unlocked", node.getId());
+            return false;
+        }
+        if (data.getSkillPoints() < node.getCost()) {
+            SkillEngine.LOGGER.debug("cannot unlock {}: not enough points (have {}, need {})",
+                    node.getId(), data.getSkillPoints(), node.getCost());
+            return false;
+        }
         for (ResourceLocation ex : node.getExclusiveWith()) {
-            if (data.isUnlocked(ex)) return false;
+            if (data.isUnlocked(ex)) {
+                SkillEngine.LOGGER.debug("cannot unlock {}: mutually exclusive with {} which is already unlocked",
+                        node.getId(), ex);
+                return false;
+            }
         }
         for (ResourceLocation parent : node.getLinks()) {
-            if (!data.isUnlocked(parent)) return false;
+            if (!data.isUnlocked(parent)) {
+                SkillEngine.LOGGER.debug("cannot unlock {}: parent {} is not unlocked",
+                        node.getId(), parent);
+                return false;
+            }
         }
         PlayerStats stats = player.getCapability(PlayerStatsProvider.PLAYER_STATS).orElse(null);
-        if (stats == null) return false;
+        if (stats == null) {
+            SkillEngine.LOGGER.debug("cannot unlock {}: no PlayerStats capability", node.getId());
+            return false;
+        }
         for (var e : node.getPrereqAttributes().entrySet()) {
-            if (stats.getAttributeLevel(e.getKey()) < e.getValue()) {
+            int current = stats.getAttributeLevel(e.getKey());
+            if (current < e.getValue()) {
+                SkillEngine.LOGGER.debug("cannot unlock {}: attribute {} is {}/{}",
+                        node.getId(), e.getKey(), current, e.getValue());
                 return false;
             }
         }

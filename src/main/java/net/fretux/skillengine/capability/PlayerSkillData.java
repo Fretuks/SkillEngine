@@ -1,5 +1,6 @@
 package net.fretux.skillengine.capability;
 
+import net.fretux.skillengine.network.PacketHandler;
 import net.fretux.skillengine.skilltree.AbilityNode;
 import net.fretux.skillengine.skilltree.SkillNode;
 import net.fretux.skillengine.skilltree.SkillNodeRegistry;
@@ -7,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -198,5 +200,9 @@ public class PlayerSkillData {
         unlockedNodes.clear();
         activeTags.clear();
         unlockedAbilities.clear();
+    }
+
+    public void sync(ServerPlayer player) {
+        PacketHandler.syncSkillsTo(player);
     }
 }

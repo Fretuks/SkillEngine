@@ -3,6 +3,7 @@ package net.fretux.skillengine.compat;
 import net.fretux.ascend.player.PlayerStatsProvider;
 import net.fretux.skillengine.SkillEngine;
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -61,6 +62,7 @@ public class AscendCompatHandler {
                 int pointsToGive = levelsGained * SKILL_POINTS_PER_ASCEND_LEVEL;
                 player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(skillData -> {
                     skillData.addSkillPoints(pointsToGive);
+                    skillData.sync((ServerPlayer) player);
                 });
             }
             LAST_ASCEND_LEVEL.put(player.getUUID(), currentLevel);

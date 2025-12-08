@@ -135,7 +135,7 @@ public class SkilltreeScreen extends Screen {
 
     private void renderSkillPointHeader(GuiGraphics gfx) {
         int remaining = SkilltreeClientState.getCurrentSkillPoints();
-        Component pointsText = Component.literal(remaining + " skillpoints remaining")
+        Component pointsText = Component.literal("Skillpoints Remaining: " + remaining)
                 .withStyle(ChatFormatting.YELLOW);
         gfx.drawString(font, pointsText, 10, 10, 0xFFFFFF);
     }
@@ -250,7 +250,9 @@ public class SkilltreeScreen extends Screen {
             tooltip.add(Component.literal("Mutually Exclusive with:")
                     .withStyle(ChatFormatting.RED));
             for (ResourceLocation ex : hoveredNode.getExclusiveWith()) {
-                tooltip.add(Component.literal(" - " + ex.toString())
+                SkillNode other = SkillNodeRegistry.get(ex);
+                Component name = other != null ? other.getTitle() : Component.literal(ex.toString());
+                tooltip.add(Component.literal(" - ").append(name.copy())
                         .withStyle(ChatFormatting.RED));
             }
         }
@@ -309,8 +311,41 @@ public class SkilltreeScreen extends Screen {
         gfx.fill(0, 0, width, height, 0x88000000);
         gfx.fill(x, y, x + OVERLAY_WIDTH, y + OVERLAY_HEIGHT, 0xFF222222);
         gfx.drawCenteredString(font, ability.getTitle(), x + OVERLAY_WIDTH / 2, y + 10, 0xFFFFFF);
+        int textY = y + 30;
         if (ability.getDescription() != null) {
-            gfx.drawWordWrap(font, ability.getDescription(), x + 10, y + 30, OVERLAY_WIDTH - 20, 0xDDDDDD);
+            gfx.drawWordWrap(font, ability.getDescription(), x + 10, textY, OVERLAY_WIDTH - 20, 0xDDDDDD);
+            textY += 60;
+        }
+        gfx.drawString(font,
+                Component.literal("Cooldown: " + ability.getCooldown() / 20 + " seconds")
+                        .withStyle(ChatFormatting.AQUA),
+                x + 10,
+                textY,
+                0xFFFFFF);
+        textY += 15;
+        if (!ability.getLinks().isEmpty()) {
+            gfx.drawString(font,
+                    Component.literal("Requires:")
+                            .withStyle(ChatFormatting.GOLD),
+                    x + 10,
+                    textY,
+                    0xFFFFFF);
+            textY += 12;
+            for (ResourceLocation parent : ability.getLinks()) {
+                SkillNode parentNode = SkillNodeRegistry.get(parent);
+                AbilityNode parentAbility = AbilityNodeRegistry.get(parent);
+                Component name = parentNode != null
+                        ? parentNode.getTitle()
+                        : parentAbility != null
+                        ? parentAbility.getTitle()
+                        : Component.literal(parent.toString());
+                gfx.drawString(font,
+                        Component.literal(" - ").append(name),
+                        x + 10,
+                        textY,
+                        0xFFFFFF);
+                textY += 12;
+            }
         }
     }
 

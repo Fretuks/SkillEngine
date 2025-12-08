@@ -3,8 +3,6 @@ package net.fretux.skillengine.client;
 import net.fretux.skillengine.SkillEngine;
 import net.fretux.skillengine.capability.PlayerSkillData;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.toasts.SystemToast;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 
@@ -34,14 +32,6 @@ public class SkilltreeClientState {
         if (mc.player != null) {
             mc.player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
         }
-        mc.getToasts().addToast(
-                SystemToast.multiline(
-                        mc,
-                        SystemToast.SystemToastIds.TUTORIAL_HINT,
-                        Component.literal("Node Unlocked"),
-                        Component.literal(id.toString())
-                )
-        );
     }
 
     public static boolean isUnlocked(ResourceLocation id) {
