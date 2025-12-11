@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class PlayerSkillData {
-
     private int skillPoints;
     private final Set<ResourceLocation> unlockedNodes = new HashSet<>();
     private final Set<ResourceLocation> unlockedAbilities = new HashSet<>();
