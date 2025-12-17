@@ -451,7 +451,16 @@ public class SkilltreeScreen extends Screen {
         } else if (unlocked) {
             color = 0xFF44CC44;
         } else {
-            color = 0xFF444444;
+            int cost = node.getCost();
+            if (cost <= 1) {
+                color = 0xFF444444;
+            } else if (cost == 2) {
+                color = 0xFFFF6633;
+            } else if (cost == 3) {
+                color = 0xFF33CCCC;
+            } else {
+                color = 0xFFFFD700;
+            }
         }
         return color;
     }

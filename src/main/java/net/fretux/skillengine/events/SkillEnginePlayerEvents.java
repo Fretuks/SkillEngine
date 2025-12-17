@@ -33,6 +33,17 @@ public class SkillEnginePlayerEvents {
     }
 
     @SubscribeEvent
+    public static void onClone(PlayerEvent.Clone event) {
+        if (event.getEntity() instanceof ServerPlayer newPlayer && event.getOriginal() instanceof ServerPlayer oldPlayer) {
+            oldPlayer.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(oldData ->
+                newPlayer.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(newData -> {
+                    newData.load(oldData.save());
+                })
+            );
+        }
+    }
+
+    @SubscribeEvent
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             sync(player);

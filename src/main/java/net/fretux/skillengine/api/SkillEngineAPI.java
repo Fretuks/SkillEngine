@@ -20,11 +20,11 @@ public final class SkillEngineAPI {
     private SkillEngineAPI() {}
 
     public static ResourceLocation id(String path) {
-        return new ResourceLocation(SkillEngine.MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(SkillEngine.MODID, path);
     }
 
     public static ResourceLocation rl(String namespace, String path) {
-        return new ResourceLocation(namespace, path);
+        return ResourceLocation.fromNamespaceAndPath(namespace, path);
     }
 
     public static SkillNode getSkillNode(ResourceLocation id) {
