@@ -10,7 +10,9 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class PlayerSkillData {
@@ -20,6 +22,20 @@ public class PlayerSkillData {
     private final Set<ResourceLocation> activeTags = new HashSet<>();
     private final ResourceLocation[] abilitySlots = new ResourceLocation[3];
     private final int[] abilityCooldowns = new int[3];
+    private final Map<ResourceLocation, Integer> tagCooldowns = new HashMap<>();
+
+    public boolean isOnCooldown(ResourceLocation tag) {
+        return tagCooldowns.getOrDefault(tag, 0) > 0;
+    }
+
+    public void setCooldown(ResourceLocation tag, int ticks) {
+        tagCooldowns.put(tag, ticks);
+    }
+
+    public void tickTagCooldowns() {
+        tagCooldowns.replaceAll((k, v) -> Math.max(0, v - 1));
+    }
+
 
     public int getSkillPoints() {
         return skillPoints;
