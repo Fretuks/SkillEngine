@@ -1,8 +1,9 @@
 package net.fretux.skillengine.network;
 
-import net.fretux.skillengine.client.SkilltreeClientState;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.HashSet;
@@ -63,11 +64,17 @@ public class ClientboundSyncSkillsPacket {
 
     public static void handle(ClientboundSyncSkillsPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            SkilltreeClientState.setUnlocked(msg.unlocked);
-            SkilltreeClientState.setUnlockedAbilities(msg.unlockedAbilities);
-            SkilltreeClientState.setCurrentSkillPoints(msg.skillPoints);
-            SkilltreeClientState.setAbilitySlots(msg.abilitySlots);
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientHandler.handle(msg));
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    private static final class ClientHandler {
+        private static void handle(ClientboundSyncSkillsPacket msg) {
+            net.fretux.skillengine.client.SkilltreeClientState.setUnlocked(msg.unlocked);
+            net.fretux.skillengine.client.SkilltreeClientState.setUnlockedAbilities(msg.unlockedAbilities);
+            net.fretux.skillengine.client.SkilltreeClientState.setCurrentSkillPoints(msg.skillPoints);
+            net.fretux.skillengine.client.SkilltreeClientState.setAbilitySlots(msg.abilitySlots);
+        }
     }
 }

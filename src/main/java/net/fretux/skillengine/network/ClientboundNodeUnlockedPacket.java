@@ -3,8 +3,9 @@ package net.fretux.skillengine.network;
 import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
-import net.fretux.skillengine.client.SkilltreeClientState;
 
 import java.util.function.Supplier;
 
@@ -30,13 +31,20 @@ public class ClientboundNodeUnlockedPacket {
 
     public static void handle(ClientboundNodeUnlockedPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            if (AbilityNodeRegistry.get(msg.id) != null)
-                SkilltreeClientState.unlockAbility(msg.id);
-            else
-                SkilltreeClientState.unlockNode(msg.id);
-            SkilltreeClientState.setCurrentSkillPoints(msg.newSkillPoints);
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientHandler.handle(msg));
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    private static final class ClientHandler {
+        private static void handle(ClientboundNodeUnlockedPacket msg) {
+            if (AbilityNodeRegistry.get(msg.id) != null) {
+                net.fretux.skillengine.client.SkilltreeClientState.unlockAbility(msg.id);
+            } else {
+                net.fretux.skillengine.client.SkilltreeClientState.unlockNode(msg.id);
+            }
+            net.fretux.skillengine.client.SkilltreeClientState.setCurrentSkillPoints(msg.newSkillPoints);
+        }
     }
 }
 
