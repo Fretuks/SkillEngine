@@ -7,11 +7,8 @@ import net.minecraft.client.KeyMapping;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.settings.KeyConflictContext;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = net.fretux.skillengine.SkillEngine.MODID, value = Dist.CLIENT)
 public class AbilityKeybindHandler {
 
     public static final KeyMapping ABILITY_1 = new KeyMapping(
@@ -29,7 +26,6 @@ public class AbilityKeybindHandler {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, "key.categories.gameplay"
     );
 
-    @SubscribeEvent
     public static void onInput(InputEvent.Key event) {
         if (ABILITY_1.consumeClick()) {
             if (SkilltreeClientState.getClientCooldown(1) <= 0) {

@@ -1,8 +1,10 @@
 package net.fretux.skillengine;
 
 import com.mojang.logging.LogUtils;
+import net.minecraftforge.api.distmarker.Dist;
 import net.fretux.skillengine.network.PacketHandler;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
@@ -16,5 +18,9 @@ public class SkillEngine {
     public SkillEngine() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         PacketHandler.register();
+        DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> () -> net.fretux.skillengine.client.ClientBootstrap.register(modBus)
+        );
     }
 }
