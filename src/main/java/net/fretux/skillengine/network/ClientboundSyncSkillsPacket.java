@@ -64,17 +64,16 @@ public class ClientboundSyncSkillsPacket {
 
     public static void handle(ClientboundSyncSkillsPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientHandler.handle(msg));
+            DistExecutor.unsafeRunWhenOn(
+                    Dist.CLIENT,
+                    () -> () -> net.fretux.skillengine.client.ClientSkillEngineBridge.handleSkillsSync(
+                            msg.unlocked,
+                            msg.unlockedAbilities,
+                            msg.skillPoints,
+                            msg.abilitySlots
+                    )
+            );
         });
         ctx.get().setPacketHandled(true);
-    }
-
-    private static final class ClientHandler {
-        private static void handle(ClientboundSyncSkillsPacket msg) {
-            net.fretux.skillengine.client.SkilltreeClientState.setUnlocked(msg.unlocked);
-            net.fretux.skillengine.client.SkilltreeClientState.setUnlockedAbilities(msg.unlockedAbilities);
-            net.fretux.skillengine.client.SkilltreeClientState.setCurrentSkillPoints(msg.skillPoints);
-            net.fretux.skillengine.client.SkilltreeClientState.setAbilitySlots(msg.abilitySlots);
-        }
     }
 }

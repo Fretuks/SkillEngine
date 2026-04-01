@@ -38,14 +38,18 @@ public class SkilltreeClientState {
         return unlocked.contains(id);
     }
 
-    public static void setUnlocked(Set<ResourceLocation> ids) {
+    public static void setUnlocked(Iterable<ResourceLocation> ids) {
         unlocked.clear();
-        unlocked.addAll(ids);
+        for (ResourceLocation id : ids) {
+            unlocked.add(id);
+        }
     }
 
-    public static void setUnlockedAbilities(Set<ResourceLocation> abilities) {
+    public static void setUnlockedAbilities(Iterable<ResourceLocation> abilities) {
         unlockedAbilities.clear();
-        unlockedAbilities.addAll(abilities);
+        for (ResourceLocation ability : abilities) {
+            unlockedAbilities.add(ability);
+        }
     }
 
     public static void setCurrentSkillPoints(int points) {

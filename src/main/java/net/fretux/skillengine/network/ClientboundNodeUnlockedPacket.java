@@ -31,20 +31,17 @@ public class ClientboundNodeUnlockedPacket {
 
     public static void handle(ClientboundNodeUnlockedPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientHandler.handle(msg));
+            boolean isAbility = AbilityNodeRegistry.get(msg.id) != null;
+            DistExecutor.unsafeRunWhenOn(
+                    Dist.CLIENT,
+                    () -> () -> net.fretux.skillengine.client.ClientSkillEngineBridge.handleNodeUnlocked(
+                            msg.id,
+                            msg.newSkillPoints,
+                            isAbility
+                    )
+            );
         });
         ctx.get().setPacketHandled(true);
-    }
-
-    private static final class ClientHandler {
-        private static void handle(ClientboundNodeUnlockedPacket msg) {
-            if (AbilityNodeRegistry.get(msg.id) != null) {
-                net.fretux.skillengine.client.SkilltreeClientState.unlockAbility(msg.id);
-            } else {
-                net.fretux.skillengine.client.SkilltreeClientState.unlockNode(msg.id);
-            }
-            net.fretux.skillengine.client.SkilltreeClientState.setCurrentSkillPoints(msg.newSkillPoints);
-        }
     }
 }
 

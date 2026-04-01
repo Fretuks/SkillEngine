@@ -3,6 +3,7 @@ package net.fretux.skillengine.api;
 import net.fretux.skillengine.SkillEngine;
 import net.fretux.skillengine.capability.PlayerSkillData;
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
+import net.fretux.skillengine.client.ClientSkillEngineBridge;
 import net.fretux.skillengine.skilltree.AbilityNode;
 import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
 import net.fretux.skillengine.skilltree.SkillLogic;
@@ -11,6 +12,7 @@ import net.fretux.skillengine.skilltree.SkillNodeRegistry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 
 import java.util.List;
@@ -131,28 +133,23 @@ public final class SkillEngineAPI {
     }
 
     public static boolean clientHasSkill(ResourceLocation id) {
-        return FMLEnvironment.dist == Dist.CLIENT && ClientAccess.clientHasSkill(id);
+        if (FMLEnvironment.dist != Dist.CLIENT) {
+            return false;
+        }
+        return DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> () -> ClientSkillEngineBridge.clientHasSkill(id));
     }
 
     public static int clientGetAbilitySlot(ResourceLocation id) {
-        return FMLEnvironment.dist == Dist.CLIENT ? ClientAccess.clientGetAbilitySlot(id) : -1;
+        if (FMLEnvironment.dist != Dist.CLIENT) {
+            return -1;
+        }
+        return DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> () -> ClientSkillEngineBridge.clientGetAbilitySlot(id));
     }
 
     public static ResourceLocation[] clientGetAbilitySlots() {
-        return FMLEnvironment.dist == Dist.CLIENT ? ClientAccess.clientGetAbilitySlots() : new ResourceLocation[3];
-    }
-
-    private static final class ClientAccess {
-        private static boolean clientHasSkill(ResourceLocation id) {
-            return net.fretux.skillengine.client.SkilltreeClientState.isUnlocked(id);
+        if (FMLEnvironment.dist != Dist.CLIENT) {
+            return new ResourceLocation[3];
         }
-
-        private static int clientGetAbilitySlot(ResourceLocation id) {
-            return net.fretux.skillengine.client.SkilltreeClientState.getSlotOfAbility(id);
-        }
-
-        private static ResourceLocation[] clientGetAbilitySlots() {
-            return net.fretux.skillengine.client.SkilltreeClientState.getAbilitySlots();
-        }
+        return DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> ClientSkillEngineBridge::clientGetAbilitySlots);
     }
 }

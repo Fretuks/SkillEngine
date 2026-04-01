@@ -27,13 +27,15 @@ public class ClientboundSyncCooldownPacket {
     }
 
     public static void handle(ClientboundSyncCooldownPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientHandler.handle(msg)));
+        ctx.get().enqueueWork(() ->
+                DistExecutor.unsafeRunWhenOn(
+                        Dist.CLIENT,
+                        () -> () -> net.fretux.skillengine.client.ClientSkillEngineBridge.handleCooldownSync(
+                                msg.slot,
+                                msg.cooldown
+                        )
+                )
+        );
         ctx.get().setPacketHandled(true);
-    }
-
-    private static final class ClientHandler {
-        private static void handle(ClientboundSyncCooldownPacket msg) {
-            net.fretux.skillengine.client.SkilltreeClientState.updateCooldown(msg.slot, msg.cooldown);
-        }
     }
 }
