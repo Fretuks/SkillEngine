@@ -109,6 +109,13 @@ public class PlayerSkillData {
         return abilitySlots.clone();
     }
 
+    public void clearAbilitySlots() {
+        for (int i = 0; i < abilitySlots.length; i++) {
+            abilitySlots[i] = null;
+            abilityCooldowns[i] = 0;
+        }
+    }
+
     public void setCooldown(int slot, int ticks) {
         int idx = slot - 1;
         if (idx < 0 || idx >= abilityCooldowns.length) return;
@@ -215,6 +222,7 @@ public class PlayerSkillData {
         unlockedNodes.clear();
         activeTags.clear();
         unlockedAbilities.clear();
+        clearAbilitySlots();
     }
 
     public void sync(ServerPlayer player) {
