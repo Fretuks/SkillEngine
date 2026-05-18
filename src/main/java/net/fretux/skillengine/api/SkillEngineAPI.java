@@ -92,8 +92,11 @@ public final class SkillEngineAPI {
         if (data == null) return false;
         SkillNode node = SkillNodeRegistry.get(id);
         if (node == null) return false;
-        if (!SkillLogic.canUnlock(data, player, node)) return false;
-        data.unlockNode(node);
+        List<SkillNode> unlockPlan = SkillLogic.getUnlockPlan(data, player, node).orElse(null);
+        if (unlockPlan == null) return false;
+        for (SkillNode plannedNode : unlockPlan) {
+            data.unlockNode(plannedNode);
+        }
         return true;
     }
 
