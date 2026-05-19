@@ -23,5 +23,9 @@ public class ClientKeybinds {
                 "key.categories.ui"
         );
         event.register(OPEN_ABILITIES);
+
+        event.register(AbilityKeybindHandler.ABILITY_1);
+        event.register(AbilityKeybindHandler.ABILITY_2);
+        event.register(AbilityKeybindHandler.ABILITY_3);
     }
 }

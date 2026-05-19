@@ -1,6 +1,7 @@
 package net.fretux.skillengine.network;
 
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
+import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -32,9 +33,12 @@ public class ServerboundBindAbilityPacket {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
 
-            player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data ->
-                data.bindAbility(msg.slot, msg.abilityId)
-            );
+            player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
+                if (msg.slot < 1 || msg.slot > 3) return;
+                if (AbilityNodeRegistry.get(msg.abilityId) == null) return;
+                if (!data.isAbilityUnlocked(msg.abilityId)) return;
+                data.bindAbility(msg.slot, msg.abilityId);
+            });
             PacketHandler.syncSkillsTo(player);
         });
         ctx.get().setPacketHandled(true);

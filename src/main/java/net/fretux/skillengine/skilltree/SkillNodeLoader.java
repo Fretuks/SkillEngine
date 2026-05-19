@@ -40,7 +40,7 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
         jsons.forEach((id, element) -> {
             JsonObject obj = element.getAsJsonObject();
             ResourceLocation nodeId = obj.has("id")
-                    ? new ResourceLocation(obj.get("id").getAsString())
+                    ? ResourceLocation.parse(obj.get("id").getAsString())
                     : id;
             String title = obj.get("title").getAsString();
             String description = obj.get("description").getAsString();
@@ -50,11 +50,11 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
             float y = pos.get("y").getAsFloat();
             List<ResourceLocation> links = new ArrayList<>();
             obj.getAsJsonArray("links").forEach(e ->
-                    links.add(new ResourceLocation(e.getAsString())));
+                    links.add(ResourceLocation.parse(e.getAsString())));
             List<ResourceLocation> tags = new ArrayList<>();
             obj.getAsJsonArray("tags").forEach(e ->
-                    tags.add(new ResourceLocation(e.getAsString())));
-            ResourceLocation icons = new ResourceLocation(obj.get("icons").getAsString());
+                    tags.add(ResourceLocation.parse(e.getAsString())));
+            ResourceLocation icons = ResourceLocation.parse(obj.get("icons").getAsString());
             Map<String, Integer> prereqAttributes = new HashMap<>();
             if (obj.has("prerequisites")) {
                 JsonObject prereqObj = obj.getAsJsonObject("prerequisites");
@@ -65,7 +65,7 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
             List<ResourceLocation> exclusiveWith = new ArrayList<>();
             if (obj.has("exclusive_with")) {
                 obj.getAsJsonArray("exclusive_with").forEach(e ->
-                        exclusiveWith.add(new ResourceLocation(e.getAsString())));
+                        exclusiveWith.add(ResourceLocation.parse(e.getAsString())));
             }
             SkillNode node = new SkillNode(
                     nodeId,

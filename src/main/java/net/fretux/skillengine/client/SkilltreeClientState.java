@@ -18,11 +18,15 @@ public class SkilltreeClientState {
     private static final int[] clientCooldowns = new int[3];
 
     public static void updateCooldown(int slot, int cd) {
-        clientCooldowns[slot - 1] = cd;
+        int index = slot - 1;
+        if (index < 0 || index >= clientCooldowns.length) return;
+        clientCooldowns[index] = Math.max(0, cd);
     }
 
     public static int getClientCooldown(int slot) {
-        return clientCooldowns[slot - 1];
+        int index = slot - 1;
+        if (index < 0 || index >= clientCooldowns.length) return 0;
+        return clientCooldowns[index];
     }
 
     public static void unlockNode(ResourceLocation id) {

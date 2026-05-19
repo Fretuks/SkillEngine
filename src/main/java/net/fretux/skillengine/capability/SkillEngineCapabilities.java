@@ -22,7 +22,7 @@ public class SkillEngineCapabilities {
         if (event.getObject() instanceof Player) {
             SkillEngine.LOGGER.info("Attaching PlayerSkillData capability");
             event.addCapability(
-                    new ResourceLocation(SkillEngine.MODID, "player_skill_data"),
+                    ResourceLocation.fromNamespaceAndPath(SkillEngine.MODID, "player_skill_data"),
                     new PlayerSkillProvider()
             );
         }

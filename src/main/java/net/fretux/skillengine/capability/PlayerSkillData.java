@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
@@ -182,25 +183,28 @@ public class PlayerSkillData {
         unlockedNodes.clear();
         unlockedAbilities.clear();
         activeTags.clear();
+        Arrays.fill(abilitySlots, null);
+        Arrays.fill(abilityCooldowns, 0);
+        tagCooldowns.clear();
         ListTag nodeList = tag.getList("UnlockedNodes", Tag.TAG_COMPOUND);
         for (Tag t : nodeList) {
-            ResourceLocation id = new ResourceLocation(((CompoundTag) t).getString("Id"));
+            ResourceLocation id = ResourceLocation.parse(((CompoundTag) t).getString("Id"));
             unlockedNodes.add(id);
             SkillNode node = SkillNodeRegistry.get(id);
             if (node != null) activeTags.addAll(node.getTags());
         }
         ListTag tagList = tag.getList("ActiveTags", Tag.TAG_COMPOUND);
         for (Tag t : tagList) {
-            activeTags.add(new ResourceLocation(((CompoundTag) t).getString("Tag")));
+            activeTags.add(ResourceLocation.parse(((CompoundTag) t).getString("Tag")));
         }
         ListTag slots = tag.getList("AbilitySlots", Tag.TAG_COMPOUND);
         for (int i = 0; i < 3 && i < slots.size(); i++) {
             String id = slots.getCompound(i).getString("Id");
-            abilitySlots[i] = id.isEmpty() ? null : new ResourceLocation(id);
+            abilitySlots[i] = id.isEmpty() ? null : ResourceLocation.parse(id);
         }
         ListTag abilityList = tag.getList("UnlockedAbilities", Tag.TAG_COMPOUND);
         for (Tag t : abilityList) {
-            unlockedAbilities.add(new ResourceLocation(((CompoundTag) t).getString("Id")));
+            unlockedAbilities.add(ResourceLocation.parse(((CompoundTag) t).getString("Id")));
         }
         ListTag cdList = tag.getList("AbilityCooldowns", Tag.TAG_COMPOUND);
         for (int i = 0; i < abilityCooldowns.length && i < cdList.size(); i++) {

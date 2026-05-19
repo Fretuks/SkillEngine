@@ -48,11 +48,11 @@ public class AbilityNodeLoader extends SimpleJsonResourceReloadListener {
             float y = pos.get("y").getAsFloat();
             List<ResourceLocation> links = new ArrayList<>();
             obj.getAsJsonArray("links").forEach(e ->
-                    links.add(new ResourceLocation(e.getAsString())));
+                    links.add(ResourceLocation.parse(e.getAsString())));
             List<ResourceLocation> tags = new ArrayList<>();
             obj.getAsJsonArray("tags").forEach(e ->
-                    tags.add(new ResourceLocation(e.getAsString())));
-            ResourceLocation icon = new ResourceLocation(obj.get("icon").getAsString());
+                    tags.add(ResourceLocation.parse(e.getAsString())));
+            ResourceLocation icon = ResourceLocation.parse(obj.get("icon").getAsString());
             int cooldown = obj.has("cooldown") ? obj.get("cooldown").getAsInt() : 0;
             AbilityNode node = new AbilityNode(id, title, description, x, y, links, tags, icon, cooldown);
             AbilityNodeRegistry.put(node);
