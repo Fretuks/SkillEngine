@@ -14,6 +14,7 @@ import net.minecraftforge.network.PacketDistributor;
 public class SkillEnginePlayerEvents {
 
     private static void sync(ServerPlayer player) {
+        PacketHandler.syncSkillDefinitionsTo(player);
         player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> PacketHandler.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
                 new ClientboundSyncSkillsPacket(

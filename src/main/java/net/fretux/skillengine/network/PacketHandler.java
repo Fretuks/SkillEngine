@@ -1,6 +1,8 @@
 package net.fretux.skillengine.network;
 
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
+import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
+import net.fretux.skillengine.skilltree.SkillNodeRegistry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -11,7 +13,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public class PacketHandler {
 
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(SkillEngine.MODID, "network"))
             .clientAcceptedVersions(PROTOCOL::equals)
@@ -36,6 +38,11 @@ public class PacketHandler {
                 .encoder(ClientboundSyncSkillsPacket::encode)
                 .decoder(ClientboundSyncSkillsPacket::decode)
                 .consumerMainThread(ClientboundSyncSkillsPacket::handle)
+                .add();
+        CHANNEL.messageBuilder(ClientboundSyncSkillDefinitionsPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ClientboundSyncSkillDefinitionsPacket::encode)
+                .decoder(ClientboundSyncSkillDefinitionsPacket::decode)
+                .consumerMainThread(ClientboundSyncSkillDefinitionsPacket::handle)
                 .add();
         CHANNEL.messageBuilder(ServerboundBindAbilityPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(ServerboundBindAbilityPacket::encode)
@@ -65,5 +72,15 @@ public class PacketHandler {
                     );
             CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
         });
+    }
+
+    public static void syncSkillDefinitionsTo(ServerPlayer player) {
+        CHANNEL.send(
+                PacketDistributor.PLAYER.with(() -> player),
+                new ClientboundSyncSkillDefinitionsPacket(
+                        SkillNodeRegistry.all(),
+                        AbilityNodeRegistry.all()
+                )
+        );
     }
 }

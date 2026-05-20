@@ -1,5 +1,9 @@
 package net.fretux.skillengine.client;
 
+import net.fretux.skillengine.skilltree.AbilityNode;
+import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
+import net.fretux.skillengine.skilltree.SkillNode;
+import net.fretux.skillengine.skilltree.SkillNodeRegistry;
 import net.minecraft.resources.ResourceLocation;
 
 public final class ClientSkillEngineBridge {
@@ -35,6 +39,19 @@ public final class ClientSkillEngineBridge {
         SkilltreeClientState.setUnlockedAbilities(unlockedAbilities);
         SkilltreeClientState.setCurrentSkillPoints(skillPoints);
         SkilltreeClientState.setAbilitySlots(abilitySlots);
+    }
+
+    public static void handleSkillDefinitionsSync(Iterable<SkillNode> skillNodes,
+                                                  Iterable<AbilityNode> abilityNodes) {
+        SkillNodeRegistry.clear();
+        for (SkillNode node : skillNodes) {
+            SkillNodeRegistry.put(node);
+        }
+
+        AbilityNodeRegistry.clear();
+        for (AbilityNode node : abilityNodes) {
+            AbilityNodeRegistry.put(node);
+        }
     }
 
     public static void handleCooldownSync(int slot, int cooldown) {
