@@ -13,6 +13,8 @@ import org.jetbrains.annotations.NotNull;
 public class AbilitySlotsScreen extends Screen {
     private static final int PANEL_WIDTH = 260;
     private static final int PANEL_HEIGHT = 180;
+    private static final int SLOT_TEXT_RIGHT_PADDING = 8;
+    private static final int REBIND_BUTTON_WIDTH = 80;
     public AbilitySlotsScreen() {
         super(Component.literal("Abilities"));
     }
@@ -22,18 +24,17 @@ public class AbilitySlotsScreen extends Screen {
         int x = (width - PANEL_WIDTH) / 2;
         int y = (height - PANEL_HEIGHT) / 2;
         int rowY = y + 40;
-        int buttonW = 80;
         int buttonH = 20;
-        int buttonX = x + PANEL_WIDTH - buttonW - 15;
+        int buttonX = x + PANEL_WIDTH - REBIND_BUTTON_WIDTH - 15;
         // Y slot = 1
         addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(1))
-                .pos(buttonX, rowY).size(buttonW, buttonH).build());
+                .pos(buttonX, rowY).size(REBIND_BUTTON_WIDTH, buttonH).build());
         // X slot = 2
         addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(2))
-                .pos(buttonX, rowY + 35).size(buttonW, buttonH).build());
+                .pos(buttonX, rowY + 35).size(REBIND_BUTTON_WIDTH, buttonH).build());
         // C slot = 3
         addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(3))
-                .pos(buttonX, rowY + 70).size(buttonW, buttonH).build());
+                .pos(buttonX, rowY + 70).size(REBIND_BUTTON_WIDTH, buttonH).build());
         addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
                 .pos(x + PANEL_WIDTH - 70, y + PANEL_HEIGHT - 28).size(60, 20).build());
     }
@@ -83,9 +84,26 @@ public class AbilitySlotsScreen extends Screen {
         }
         if (icon != null) {
             gfx.blit(icon, x + 20, y - 2, 0, 0, 20, 20, 20, 20);
-            gfx.drawString(font, title, x + 46, y + 6, 0xDDDDDD);
+            int textX = x + 46;
+            gfx.drawString(font, fitTitle(title, textX), textX, y + 6, 0xDDDDDD);
         } else {
-            gfx.drawString(font, title, x + 20, y + 6, 0x888888);
+            int textX = x + 20;
+            gfx.drawString(font, fitTitle(title, textX), textX, y + 6, 0x888888);
         }
+    }
+
+    private String fitTitle(String title, int textX) {
+        int panelX = (width - PANEL_WIDTH) / 2;
+        int buttonX = panelX + PANEL_WIDTH - REBIND_BUTTON_WIDTH - 15;
+        int availableWidth = buttonX - SLOT_TEXT_RIGHT_PADDING - textX;
+        if (availableWidth <= 0 || font.width(title) <= availableWidth) {
+            return title;
+        }
+        String suffix = "...";
+        int suffixWidth = font.width(suffix);
+        if (availableWidth <= suffixWidth) {
+            return "";
+        }
+        return font.plainSubstrByWidth(title, availableWidth - suffixWidth) + suffix;
     }
 }
