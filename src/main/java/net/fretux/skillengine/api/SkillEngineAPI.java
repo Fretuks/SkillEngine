@@ -69,6 +69,7 @@ public final class SkillEngineAPI {
     }
 
     public static boolean consumeSkillPoints(Player player, int amount) {
+        if (amount <= 0) return false;
         PlayerSkillData data = getPlayerData(player);
         if (data != null && data.getSkillPoints() >= amount) {
             data.addSkillPoints(-amount);

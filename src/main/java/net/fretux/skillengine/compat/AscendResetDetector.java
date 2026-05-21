@@ -8,6 +8,7 @@ import net.fretux.skillengine.network.PacketHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -49,6 +50,14 @@ public class AscendResetDetector {
                 });
             }
         });
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity().level().isClientSide) return;
+        UUID id = event.getEntity().getUUID();
+        LAST_ATTRIBUTE_SUM.remove(id);
+        LAST_UNSPENT.remove(id);
     }
 
     private static void resetSkillEngine(PlayerSkillData data, Player player) {

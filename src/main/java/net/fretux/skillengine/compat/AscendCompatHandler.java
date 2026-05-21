@@ -33,6 +33,12 @@ public class AscendCompatHandler {
     public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         initAscendLevel(event.getEntity());
     }
+
+    @SubscribeEvent
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity().level().isClientSide) return;
+        LAST_ASCEND_LEVEL.remove(event.getEntity().getUUID());
+    }
     
     @SubscribeEvent
     public static void onPlayerClone(PlayerEvent.Clone event) {

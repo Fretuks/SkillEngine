@@ -44,7 +44,7 @@ public class ServerboundUnlockNodePacket {
                         PacketHandler.syncSkillsTo(player);
                         PacketHandler.CHANNEL.send(
                                 PacketDistributor.PLAYER.with(() -> player),
-                                new ClientboundNodeUnlockedPacket(node.getId(), data.getSkillPoints())
+                                new ClientboundNodeUnlockedPacket(node.getId(), data.getSkillPoints(), false)
                         );
                     } else {
                         SkillEngine.LOGGER.info("[SKILLENGINE] Rejecting unlock for {}", node.getId());
@@ -57,7 +57,7 @@ public class ServerboundUnlockNodePacket {
                         PacketHandler.syncSkillsTo(player);
                         PacketHandler.CHANNEL.send(
                                 PacketDistributor.PLAYER.with(() -> player),
-                                new ClientboundNodeUnlockedPacket(ability.getId(), data.getSkillPoints())
+                                new ClientboundNodeUnlockedPacket(ability.getId(), data.getSkillPoints(), true)
                         );
                     } else {
                         SkillEngine.LOGGER.info("[SKILLENGINE] Rejecting ability unlock for {}", ability.getId());
