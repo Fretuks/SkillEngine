@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +37,7 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
                          @NotNull ResourceManager resourceManager,
                          @NotNull ProfilerFiller profiler) {
         SkillEngine.LOGGER.info("Loading skill nodes...");
+        validateSingleSkillTreeProvider(jsons);
         SkillNodeRegistry.clear();
         jsons.forEach((id, element) -> {
             JsonObject obj = element.getAsJsonObject();
@@ -83,5 +85,30 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
             SkillNodeRegistry.put(node);
         });
         SkillEngine.LOGGER.info("Loaded {} skill nodes", SkillNodeRegistry.all().size());
+    }
+
+    private static void validateSingleSkillTreeProvider(Map<ResourceLocation, JsonElement> jsons) {
+        Map<String, List<ResourceLocation>> providers = new LinkedHashMap<>();
+        jsons.keySet().stream()
+                .filter(id -> !SkillEngine.MODID.equals(id.getNamespace()))
+                .forEach(id -> providers.computeIfAbsent(id.getNamespace(), ignored -> new ArrayList<>()).add(id));
+
+        if (providers.size() <= 1) {
+            return;
+        }
+
+        StringBuilder message = new StringBuilder();
+        message.append("Skill Engine detected multiple mods adding skill tree nodes: ");
+        providers.forEach((namespace, nodeIds) ->
+                message.append(namespace)
+                        .append(" (")
+                        .append(nodeIds.size())
+                        .append(" nodes), "));
+        message.setLength(message.length() - 2);
+        message.append(". Skill Engine supports one skill tree provider at a time because multiple skill trees overlap in the same UI. Remove all but one skill tree addon.");
+
+        String error = message.toString();
+        SkillEngine.LOGGER.error(error);
+        throw new IllegalStateException(error);
     }
 }
