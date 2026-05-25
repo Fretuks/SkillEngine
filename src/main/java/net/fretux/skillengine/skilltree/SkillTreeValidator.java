@@ -33,6 +33,9 @@ public final class SkillTreeValidator {
         if (!isPngTexture(node.getIcons())) {
             issues.add(node.getId() + " has invalid icon path " + node.getIcons() + " (expected a .png texture)");
         }
+        if (node.getCost() < 0) {
+            issues.add(node.getId() + " has negative cost " + node.getCost());
+        }
         for (ResourceLocation parent : node.getLinks()) {
             if (SkillNodeRegistry.get(parent) == null) {
                 issues.add(node.getId() + " links to missing skill node " + parent);
@@ -82,6 +85,9 @@ public final class SkillTreeValidator {
     private static void validateAbility(AbilityNode ability, List<String> issues) {
         if (!isPngTexture(ability.getIcon())) {
             issues.add(ability.getId() + " has invalid icon path " + ability.getIcon() + " (expected a .png texture)");
+        }
+        if (ability.getCooldown() < 0) {
+            issues.add(ability.getId() + " has negative cooldown " + ability.getCooldown());
         }
         for (ResourceLocation parent : ability.getLinks()) {
             if (SkillNodeRegistry.get(parent) == null && AbilityNodeRegistry.get(parent) == null) {

@@ -20,6 +20,10 @@ import java.util.function.Supplier;
 
 public class ClientboundSyncSkillDefinitionsPacket {
 
+    private static final int MAX_SYNCED_NODES = 4096;
+    private static final int MAX_LIST_ENTRIES = 512;
+    private static final int MAX_PREREQUISITES = 256;
+
     private final List<SkillNode> skillNodes;
     private final List<AbilityNode> abilityNodes;
 
@@ -42,13 +46,13 @@ public class ClientboundSyncSkillDefinitionsPacket {
     }
 
     public static ClientboundSyncSkillDefinitionsPacket decode(FriendlyByteBuf buf) {
-        int skillNodeCount = buf.readInt();
+        int skillNodeCount = readBoundedCount(buf, MAX_SYNCED_NODES, "skill node definitions");
         List<SkillNode> skillNodes = new ArrayList<>(skillNodeCount);
         for (int i = 0; i < skillNodeCount; i++) {
             skillNodes.add(readSkillNode(buf));
         }
 
-        int abilityNodeCount = buf.readInt();
+        int abilityNodeCount = readBoundedCount(buf, MAX_SYNCED_NODES, "ability node definitions");
         List<AbilityNode> abilityNodes = new ArrayList<>(abilityNodeCount);
         for (int i = 0; i < abilityNodeCount; i++) {
             abilityNodes.add(readAbilityNode(buf));
@@ -136,7 +140,7 @@ public class ClientboundSyncSkillDefinitionsPacket {
     }
 
     private static List<ResourceLocation> readResourceLocationList(FriendlyByteBuf buf) {
-        int size = buf.readInt();
+        int size = readBoundedCount(buf, MAX_LIST_ENTRIES, "resource location list");
         List<ResourceLocation> ids = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             ids.add(buf.readResourceLocation());
@@ -153,11 +157,19 @@ public class ClientboundSyncSkillDefinitionsPacket {
     }
 
     private static Map<String, Integer> readPrerequisites(FriendlyByteBuf buf) {
-        int size = buf.readInt();
+        int size = readBoundedCount(buf, MAX_PREREQUISITES, "prerequisites");
         Map<String, Integer> prerequisites = new HashMap<>(size);
         for (int i = 0; i < size; i++) {
             prerequisites.put(buf.readUtf(), buf.readInt());
         }
         return prerequisites;
+    }
+
+    private static int readBoundedCount(FriendlyByteBuf buf, int max, String fieldName) {
+        int count = buf.readInt();
+        if (count < 0 || count > max) {
+            throw new IllegalArgumentException("Invalid " + fieldName + " count: " + count);
+        }
+        return count;
     }
 }

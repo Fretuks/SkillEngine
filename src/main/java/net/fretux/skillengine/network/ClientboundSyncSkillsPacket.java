@@ -12,6 +12,9 @@ import java.util.function.Supplier;
 
 public class ClientboundSyncSkillsPacket {
 
+    private static final int MAX_SYNCED_NODES = 4096;
+    private static final int MAX_ABILITY_SLOTS = 64;
+
     private final Set<ResourceLocation> unlocked;
     private final Set<ResourceLocation> unlockedAbilities;
     private final int skillPoints;
@@ -46,15 +49,15 @@ public class ClientboundSyncSkillsPacket {
     }
 
     public static ClientboundSyncSkillsPacket decode(FriendlyByteBuf buf) {
-        int size = buf.readInt();
+        int size = readBoundedCount(buf, MAX_SYNCED_NODES, "unlocked skill nodes");
         Set<ResourceLocation> unlocked = new HashSet<>();
         for (int i = 0; i < size; i++) unlocked.add(buf.readResourceLocation());
-        int abilitySize = buf.readInt();
+        int abilitySize = readBoundedCount(buf, MAX_SYNCED_NODES, "unlocked abilities");
         Set<ResourceLocation> unlockedAbilities = new HashSet<>();
         for (int i = 0; i < abilitySize; i++) unlockedAbilities.add(buf.readResourceLocation());
         int points = buf.readInt();
-        int slotsCount = buf.readInt();
-        ResourceLocation[] slots = new ResourceLocation[Math.max(slotsCount, 0)];
+        int slotsCount = readBoundedCount(buf, MAX_ABILITY_SLOTS, "ability slots");
+        ResourceLocation[] slots = new ResourceLocation[slotsCount];
         for (int i = 0; i < slots.length; i++) {
             boolean present = buf.readBoolean();
             slots[i] = present ? buf.readResourceLocation() : null;
@@ -75,5 +78,13 @@ public class ClientboundSyncSkillsPacket {
             );
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    private static int readBoundedCount(FriendlyByteBuf buf, int max, String fieldName) {
+        int count = buf.readInt();
+        if (count < 0 || count > max) {
+            throw new IllegalArgumentException("Invalid " + fieldName + " count: " + count);
+        }
+        return count;
     }
 }

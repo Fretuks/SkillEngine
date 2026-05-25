@@ -46,10 +46,11 @@ public class ServerboundActivateAbilityPacket {
                 int cd = data.getCooldown(msg.slot);
                 if (cd > 0) return;
                 ability.execute(player);
-                data.setCooldown(msg.slot, ability.getCooldown());
+                int cooldown = Math.max(0, ability.getCooldown());
+                data.setCooldown(msg.slot, cooldown);
                 PacketHandler.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> player),
-                        new ClientboundSyncCooldownPacket(msg.slot, ability.getCooldown())
+                        new ClientboundSyncCooldownPacket(msg.slot, cooldown)
                 );
             });
         });

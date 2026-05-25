@@ -55,7 +55,7 @@ public class PlayerSkillData {
         if (node == null) return;
         if (unlockedNodes.add(node.getId())) {
             activeTags.addAll(node.getTags());
-            skillPoints -= node.getCost();
+            skillPoints -= Math.max(0, node.getCost());
         }
     }
 
@@ -126,7 +126,7 @@ public class PlayerSkillData {
         ensureSlotCount();
         int idx = slot - 1;
         if (idx < 0 || idx >= abilityCooldowns.length) return;
-        abilityCooldowns[idx] = ticks;
+        abilityCooldowns[idx] = Math.max(0, ticks);
     }
 
     public int getCooldown(int slot) {
@@ -226,7 +226,7 @@ public class PlayerSkillData {
         int total = 0;
         for (ResourceLocation id : unlockedNodes) {
             SkillNode node = SkillNodeRegistry.get(id);
-            if (node != null) total += node.getCost();
+            if (node != null) total += Math.max(0, node.getCost());
         }
         return total;
     }
@@ -247,7 +247,7 @@ public class PlayerSkillData {
                 return false;
             }
         }
-        skillPoints += node.getCost();
+        skillPoints += Math.max(0, node.getCost());
         rebuildActiveTags();
         return true;
     }
@@ -259,8 +259,9 @@ public class PlayerSkillData {
         for (ResourceLocation id : toRefund) {
             SkillNode node = SkillNodeRegistry.get(id);
             if (node != null && unlockedNodes.remove(id)) {
-                skillPoints += node.getCost();
-                refunded += node.getCost();
+                int cost = Math.max(0, node.getCost());
+                skillPoints += cost;
+                refunded += cost;
             }
         }
         rebuildActiveTags();

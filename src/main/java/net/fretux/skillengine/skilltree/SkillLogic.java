@@ -33,7 +33,7 @@ public class SkillLogic {
 
         int totalCost = 0;
         for (SkillNode plannedNode : plan) {
-            totalCost += plannedNode.getCost();
+            totalCost += Math.max(0, plannedNode.getCost());
         }
         if (data.getSkillPoints() < totalCost) {
             return Optional.empty();

@@ -42,10 +42,11 @@ public class ServerboundUnlockNodePacket {
                     if (unlockPlan != null) {
                         for (SkillNode plannedNode : unlockPlan) {
                             data.unlockNode(plannedNode);
-                            if (plannedNode.getCost() > 0) {
+                            int cost = Math.max(0, plannedNode.getCost());
+                            if (cost > 0) {
                                 MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
                                         player,
-                                        plannedNode.getCost(),
+                                        cost,
                                         SkillPointsChangedEvent.Reason.SPENT,
                                         plannedNode.getId()
                                 ));

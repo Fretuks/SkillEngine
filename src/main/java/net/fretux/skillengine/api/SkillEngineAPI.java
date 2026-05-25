@@ -115,10 +115,11 @@ public final class SkillEngineAPI {
         if (unlockPlan == null) return false;
         for (SkillNode plannedNode : unlockPlan) {
             data.unlockNode(plannedNode);
-            if (plannedNode.getCost() > 0) {
+            int cost = Math.max(0, plannedNode.getCost());
+            if (cost > 0) {
                 MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
                         player,
-                        plannedNode.getCost(),
+                        cost,
                         SkillPointsChangedEvent.Reason.SPENT,
                         plannedNode.getId()
                 ));
@@ -131,9 +132,10 @@ public final class SkillEngineAPI {
         PlayerSkillData data = getPlayerData(player);
         SkillNode node = SkillNodeRegistry.get(id);
         if (data == null || node == null || !data.refundNode(id)) return false;
+        int refunded = Math.max(0, node.getCost());
         MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
                 player,
-                node.getCost(),
+                refunded,
                 SkillPointsChangedEvent.Reason.REFUNDED,
                 id
         ));
