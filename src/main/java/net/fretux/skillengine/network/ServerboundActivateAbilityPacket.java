@@ -34,7 +34,7 @@ public class ServerboundActivateAbilityPacket {
             if (player == null) return;
 
             player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
-                if (msg.slot < 1 || msg.slot > 3) return;
+                if (msg.slot < 1 || msg.slot > data.getAbilitySlots().length) return;
 
                 ResourceLocation abilityId = data.getAbilityInSlot(msg.slot);
                 if (abilityId == null) return;

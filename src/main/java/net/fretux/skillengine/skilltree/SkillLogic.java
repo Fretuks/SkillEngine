@@ -1,8 +1,9 @@
 package net.fretux.skillengine.skilltree;
 
-import net.fretux.ascend.player.PlayerStatsProvider;
+import net.fretux.skillengine.api.PrerequisiteProviderRegistry;
 import net.fretux.skillengine.capability.PlayerSkillData;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.ArrayList;
@@ -43,13 +44,13 @@ public class SkillLogic {
 
     public static boolean meetsAscendPrerequisites(Player player, SkillNode node) {
         if (node.getPrereqAttributes().isEmpty()) return true;
-        return player.getCapability(PlayerStatsProvider.PLAYER_STATS).map(stats -> {
-            for (Map.Entry<String, Integer> req : node.getPrereqAttributes().entrySet()) {
-                int current = stats.getAttributeLevel(req.getKey());
-                if (current < req.getValue()) return false;
+        if (!(player instanceof ServerPlayer serverPlayer)) return true;
+        for (Map.Entry<String, Integer> req : node.getPrereqAttributes().entrySet()) {
+            if (!PrerequisiteProviderRegistry.meets(serverPlayer, node, req.getKey(), req.getValue())) {
+                return false;
             }
-            return true;
-        }).orElse(false);
+        }
+        return true;
     }
 
     private static boolean collectUnlockPlan(PlayerSkillData data,

@@ -34,7 +34,7 @@ public class ServerboundBindAbilityPacket {
             if (player == null) return;
 
             player.getCapability(SkillEngineCapabilities.PLAYER_SKILLS).ifPresent(data -> {
-                if (msg.slot < 1 || msg.slot > 3) return;
+                if (msg.slot < 1 || msg.slot > data.getAbilitySlots().length) return;
                 if (AbilityNodeRegistry.get(msg.abilityId) == null) return;
                 if (!data.isAbilityUnlocked(msg.abilityId)) return;
                 data.bindAbility(msg.slot, msg.abilityId);

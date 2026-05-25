@@ -24,8 +24,8 @@ public class ClientKeybinds {
         );
         event.register(OPEN_ABILITIES);
 
-        event.register(AbilityKeybindHandler.ABILITY_1);
-        event.register(AbilityKeybindHandler.ABILITY_2);
-        event.register(AbilityKeybindHandler.ABILITY_3);
+        for (KeyMapping keyMapping : AbilityKeybindHandler.ABILITY_KEYS) {
+            event.register(keyMapping);
+        }
     }
 }

@@ -1,5 +1,6 @@
 package net.fretux.skillengine.skilltree;
 
+import net.fretux.skillengine.api.AbilityHandlerRegistry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -48,6 +49,8 @@ public class AbilityNode {
     public int getCooldown() { return cooldown; }
 
     public void execute(ServerPlayer player) {
-        player.sendSystemMessage(Component.literal("Activated ability: " + id));
+        if (!AbilityHandlerRegistry.execute(player, this)) {
+            player.sendSystemMessage(Component.literal("Activated ability: " + id));
+        }
     }
 }

@@ -4,6 +4,7 @@ import net.fretux.skillengine.SkillEngine;
 import net.fretux.skillengine.capability.PlayerSkillData;
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
 import net.fretux.skillengine.client.ClientSkillEngineBridge;
+import net.fretux.skillengine.events.SkillPointsChangedEvent;
 import net.fretux.skillengine.skilltree.AbilityNode;
 import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
 import net.fretux.skillengine.skilltree.SkillLogic;
@@ -12,6 +13,7 @@ import net.fretux.skillengine.skilltree.SkillNodeRegistry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 
@@ -65,7 +67,17 @@ public final class SkillEngineAPI {
 
     public static void addSkillPoints(Player player, int amount) {
         PlayerSkillData data = getPlayerData(player);
-        if (data != null) data.addSkillPoints(amount);
+        if (data != null) {
+            data.addSkillPoints(amount);
+            if (amount != 0) {
+                MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
+                        player,
+                        Math.abs(amount),
+                        amount > 0 ? SkillPointsChangedEvent.Reason.GAINED : SkillPointsChangedEvent.Reason.SPENT,
+                        null
+                ));
+            }
+        }
     }
 
     public static boolean consumeSkillPoints(Player player, int amount) {
@@ -73,6 +85,12 @@ public final class SkillEngineAPI {
         PlayerSkillData data = getPlayerData(player);
         if (data != null && data.getSkillPoints() >= amount) {
             data.addSkillPoints(-amount);
+            MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
+                    player,
+                    amount,
+                    SkillPointsChangedEvent.Reason.SPENT,
+                    null
+            ));
             return true;
         }
         return false;
@@ -97,8 +115,59 @@ public final class SkillEngineAPI {
         if (unlockPlan == null) return false;
         for (SkillNode plannedNode : unlockPlan) {
             data.unlockNode(plannedNode);
+            if (plannedNode.getCost() > 0) {
+                MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
+                        player,
+                        plannedNode.getCost(),
+                        SkillPointsChangedEvent.Reason.SPENT,
+                        plannedNode.getId()
+                ));
+            }
         }
         return true;
+    }
+
+    public static boolean refundSkill(Player player, ResourceLocation id) {
+        PlayerSkillData data = getPlayerData(player);
+        SkillNode node = SkillNodeRegistry.get(id);
+        if (data == null || node == null || !data.refundNode(id)) return false;
+        MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
+                player,
+                node.getCost(),
+                SkillPointsChangedEvent.Reason.REFUNDED,
+                id
+        ));
+        return true;
+    }
+
+    public static int refundBranch(Player player, ResourceLocation rootId) {
+        PlayerSkillData data = getPlayerData(player);
+        if (data == null) return 0;
+        int refunded = data.refundBranch(rootId);
+        if (refunded > 0) {
+            MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
+                    player,
+                    refunded,
+                    SkillPointsChangedEvent.Reason.REFUNDED,
+                    rootId
+            ));
+        }
+        return refunded;
+    }
+
+    public static int resetSkills(Player player) {
+        PlayerSkillData data = getPlayerData(player);
+        if (data == null) return 0;
+        int refunded = data.resetAllNodesPreserveEarnedPoints();
+        if (refunded > 0) {
+            MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
+                    player,
+                    refunded,
+                    SkillPointsChangedEvent.Reason.REFUNDED,
+                    null
+            ));
+        }
+        return refunded;
     }
 
     public static boolean isAbilityUnlocked(Player player, ResourceLocation id) {

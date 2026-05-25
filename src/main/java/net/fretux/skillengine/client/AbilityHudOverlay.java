@@ -13,7 +13,8 @@ public class AbilityHudOverlay {
         if (mc.player == null) return;
         int xStart = event.getGuiGraphics().guiWidth() - 80;
         int yStart = 10;
-        for (int slot = 1; slot <= 3; slot++) {
+        int slots = SkilltreeClientState.getAbilitySlots().length;
+        for (int slot = 1; slot <= slots; slot++) {
             var abilityId = SkilltreeClientState.getAbilityInSlot(slot);
             if (abilityId == null) continue;
             AbilityNode ability = AbilityNodeRegistry.get(abilityId);

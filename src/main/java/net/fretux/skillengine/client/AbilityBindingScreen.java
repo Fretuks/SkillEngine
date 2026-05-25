@@ -35,27 +35,23 @@ public class AbilityBindingScreen extends Screen {
     protected void init() {
         int x = (width - PANEL_WIDTH) / 2;
         int y = (height - PANEL_HEIGHT) / 2;
-        int buttonRowWidth = SLOT_BUTTON_WIDTH * 3 + BUTTON_GAP * 2;
+        int slotCount = SkilltreeClientState.getAbilitySlots().length;
+        int visibleSlots = Math.min(slotCount, 3);
+        int buttonRowWidth = SLOT_BUTTON_WIDTH * visibleSlots + BUTTON_GAP * Math.max(0, visibleSlots - 1);
         int buttonX = x + (PANEL_WIDTH - buttonRowWidth) / 2;
         int buttonY = y + PANEL_HEIGHT - 54;
         int boundSlot = SkilltreeClientState.getSlotOfAbility(ability.getId());
-        Button yBtn = addRenderableWidget(Button.builder(Component.literal("Slot 1"),
-                b -> bind(1)).pos(buttonX, buttonY).size(SLOT_BUTTON_WIDTH, BUTTON_HEIGHT).build());
-        if (boundSlot == 1) {
-            yBtn.active = false;
-            yBtn.setMessage(Component.literal("Bound 1"));
-        }
-        Button xBtn = addRenderableWidget(Button.builder(Component.literal("Slot 2"),
-                b -> bind(2)).pos(buttonX + SLOT_BUTTON_WIDTH + BUTTON_GAP, buttonY).size(SLOT_BUTTON_WIDTH, BUTTON_HEIGHT).build());
-        if (boundSlot == 2) {
-            xBtn.active = false;
-            xBtn.setMessage(Component.literal("Bound 2"));
-        }
-        Button cBtn = addRenderableWidget(Button.builder(Component.literal("Slot 3"),
-                b -> bind(3)).pos(buttonX + (SLOT_BUTTON_WIDTH + BUTTON_GAP) * 2, buttonY).size(SLOT_BUTTON_WIDTH, BUTTON_HEIGHT).build());
-        if (boundSlot == 3) {
-            cBtn.active = false;
-            cBtn.setMessage(Component.literal("Bound 3"));
+        for (int slot = 1; slot <= visibleSlots; slot++) {
+            int currentSlot = slot;
+            Button button = addRenderableWidget(Button.builder(Component.literal("Slot " + slot),
+                    b -> bind(currentSlot))
+                    .pos(buttonX + (SLOT_BUTTON_WIDTH + BUTTON_GAP) * (slot - 1), buttonY)
+                    .size(SLOT_BUTTON_WIDTH, BUTTON_HEIGHT)
+                    .build());
+            if (boundSlot == slot) {
+                button.active = false;
+                button.setMessage(Component.literal("Bound " + slot));
+            }
         }
         addRenderableWidget(Button.builder(Component.literal("Cancel"),
                 b -> onClose()).pos(x + PANEL_WIDTH / 2 - 40, y + PANEL_HEIGHT - 28).size(80, BUTTON_HEIGHT).build());

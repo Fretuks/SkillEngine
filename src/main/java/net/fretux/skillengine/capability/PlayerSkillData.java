@@ -1,6 +1,7 @@
 package net.fretux.skillengine.capability;
 
 import net.fretux.skillengine.network.PacketHandler;
+import net.fretux.skillengine.config.SkillEngineConfig;
 import net.fretux.skillengine.skilltree.AbilityNode;
 import net.fretux.skillengine.skilltree.SkillNode;
 import net.fretux.skillengine.skilltree.SkillNodeRegistry;
@@ -21,8 +22,8 @@ public class PlayerSkillData {
     private final Set<ResourceLocation> unlockedNodes = new HashSet<>();
     private final Set<ResourceLocation> unlockedAbilities = new HashSet<>();
     private final Set<ResourceLocation> activeTags = new HashSet<>();
-    private final ResourceLocation[] abilitySlots = new ResourceLocation[3];
-    private final int[] abilityCooldowns = new int[3];
+    private ResourceLocation[] abilitySlots = new ResourceLocation[getConfiguredSlotCount()];
+    private int[] abilityCooldowns = new int[abilitySlots.length];
     private final Map<ResourceLocation, Integer> tagCooldowns = new HashMap<>();
 
     public boolean isOnCooldown(ResourceLocation tag) {
@@ -84,6 +85,7 @@ public class PlayerSkillData {
     }
 
     public void bindAbility(int slot, ResourceLocation abilityId) {
+        ensureSlotCount();
         bindHelper(slot, abilityId, abilitySlots);
     }
 
@@ -101,16 +103,19 @@ public class PlayerSkillData {
     }
 
     public ResourceLocation getAbilityInSlot(int slot) {
+        ensureSlotCount();
         int index = slot - 1;
         if (index < 0 || index >= abilitySlots.length) return null;
         return abilitySlots[index];
     }
 
     public ResourceLocation[] getAbilitySlots() {
+        ensureSlotCount();
         return abilitySlots.clone();
     }
 
     public void clearAbilitySlots() {
+        ensureSlotCount();
         for (int i = 0; i < abilitySlots.length; i++) {
             abilitySlots[i] = null;
             abilityCooldowns[i] = 0;
@@ -118,18 +123,21 @@ public class PlayerSkillData {
     }
 
     public void setCooldown(int slot, int ticks) {
+        ensureSlotCount();
         int idx = slot - 1;
         if (idx < 0 || idx >= abilityCooldowns.length) return;
         abilityCooldowns[idx] = ticks;
     }
 
     public int getCooldown(int slot) {
+        ensureSlotCount();
         int idx = slot - 1;
         if (idx < 0 || idx >= abilityCooldowns.length) return 0;
         return abilityCooldowns[idx];
     }
 
     public void tickCooldowns() {
+        ensureSlotCount();
         for (int i = 0; i < abilityCooldowns.length; i++) {
             if (abilityCooldowns[i] > 0) {
                 abilityCooldowns[i]--;
@@ -155,6 +163,7 @@ public class PlayerSkillData {
         }
         tag.put("ActiveTags", tagsList);
         ListTag slotList = new ListTag();
+        ensureSlotCount();
         for (ResourceLocation slot : abilitySlots) {
             CompoundTag t = new CompoundTag();
             t.putString("Id", slot == null ? "" : slot.toString());
@@ -183,8 +192,8 @@ public class PlayerSkillData {
         unlockedNodes.clear();
         unlockedAbilities.clear();
         activeTags.clear();
-        Arrays.fill(abilitySlots, null);
-        Arrays.fill(abilityCooldowns, 0);
+        abilitySlots = new ResourceLocation[getConfiguredSlotCount()];
+        abilityCooldowns = new int[abilitySlots.length];
         tagCooldowns.clear();
         ListTag nodeList = tag.getList("UnlockedNodes", Tag.TAG_COMPOUND);
         for (Tag t : nodeList) {
@@ -198,7 +207,7 @@ public class PlayerSkillData {
             activeTags.add(ResourceLocation.parse(((CompoundTag) t).getString("Tag")));
         }
         ListTag slots = tag.getList("AbilitySlots", Tag.TAG_COMPOUND);
-        for (int i = 0; i < 3 && i < slots.size(); i++) {
+        for (int i = 0; i < abilitySlots.length && i < slots.size(); i++) {
             String id = slots.getCompound(i).getString("Id");
             abilitySlots[i] = id.isEmpty() ? null : ResourceLocation.parse(id);
         }
@@ -227,6 +236,76 @@ public class PlayerSkillData {
         activeTags.clear();
         unlockedAbilities.clear();
         clearAbilitySlots();
+    }
+
+    public boolean refundNode(ResourceLocation nodeId) {
+        SkillNode node = SkillNodeRegistry.get(nodeId);
+        if (node == null || !unlockedNodes.remove(nodeId)) return false;
+        for (SkillNode other : SkillNodeRegistry.all()) {
+            if (unlockedNodes.contains(other.getId()) && other.getLinks().contains(nodeId)) {
+                unlockedNodes.add(nodeId);
+                return false;
+            }
+        }
+        skillPoints += node.getCost();
+        rebuildActiveTags();
+        return true;
+    }
+
+    public int refundBranch(ResourceLocation rootId) {
+        int refunded = 0;
+        Set<ResourceLocation> toRefund = new HashSet<>();
+        collectChildren(rootId, toRefund);
+        for (ResourceLocation id : toRefund) {
+            SkillNode node = SkillNodeRegistry.get(id);
+            if (node != null && unlockedNodes.remove(id)) {
+                skillPoints += node.getCost();
+                refunded += node.getCost();
+            }
+        }
+        rebuildActiveTags();
+        return refunded;
+    }
+
+    public int resetAllNodesPreserveEarnedPoints() {
+        int refunded = getTotalSkillCost();
+        skillPoints += refunded;
+        clearAllNodes();
+        return refunded;
+    }
+
+    private void rebuildActiveTags() {
+        activeTags.clear();
+        for (ResourceLocation id : unlockedNodes) {
+            SkillNode node = SkillNodeRegistry.get(id);
+            if (node != null) activeTags.addAll(node.getTags());
+        }
+    }
+
+    private void collectChildren(ResourceLocation rootId, Set<ResourceLocation> out) {
+        if (!out.add(rootId)) return;
+        for (SkillNode node : SkillNodeRegistry.all()) {
+            if (node.getLinks().contains(rootId)) {
+                collectChildren(node.getId(), out);
+            }
+        }
+    }
+
+    private static int getConfiguredSlotCount() {
+        try {
+            return SkillEngineConfig.ABILITY_SLOT_COUNT.get();
+        } catch (IllegalStateException ignored) {
+            return 3;
+        }
+    }
+
+    private void ensureSlotCount() {
+        int configured = getConfiguredSlotCount();
+        if (abilitySlots.length == configured) return;
+        ResourceLocation[] oldSlots = abilitySlots;
+        int[] oldCooldowns = abilityCooldowns;
+        abilitySlots = Arrays.copyOf(oldSlots, configured);
+        abilityCooldowns = Arrays.copyOf(oldCooldowns, configured);
     }
 
     public void sync(ServerPlayer player) {

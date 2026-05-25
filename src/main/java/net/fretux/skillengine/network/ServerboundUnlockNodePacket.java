@@ -3,10 +3,12 @@ package net.fretux.skillengine.network;
 import net.fretux.skillengine.SkillEngine;
 import net.fretux.skillengine.capability.PlayerSkillData;
 import net.fretux.skillengine.capability.SkillEngineCapabilities;
+import net.fretux.skillengine.events.SkillPointsChangedEvent;
 import net.fretux.skillengine.skilltree.*;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -40,6 +42,14 @@ public class ServerboundUnlockNodePacket {
                     if (unlockPlan != null) {
                         for (SkillNode plannedNode : unlockPlan) {
                             data.unlockNode(plannedNode);
+                            if (plannedNode.getCost() > 0) {
+                                MinecraftForge.EVENT_BUS.post(new SkillPointsChangedEvent(
+                                        player,
+                                        plannedNode.getCost(),
+                                        SkillPointsChangedEvent.Reason.SPENT,
+                                        plannedNode.getId()
+                                ));
+                            }
                         }
                         PacketHandler.syncSkillsTo(player);
                         PacketHandler.CHANNEL.send(

@@ -14,14 +14,18 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Mod.EventBusSubscriber(modid = SkillEngine.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
 
     private static final Gson GSON = new GsonBuilder().create();
+    private static final ResourceLocation DEFAULT_TREE =
+            ResourceLocation.fromNamespaceAndPath(SkillEngine.MODID, "main");
+    private static final Pattern TRANSLATION_KEY =
+            Pattern.compile("[a-z0-9_.-]+\\.[a-z0-9_.-]+");
 
     public SkillNodeLoader() {
         super(GSON, "skillnodes");
@@ -37,15 +41,14 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
                          @NotNull ResourceManager resourceManager,
                          @NotNull ProfilerFiller profiler) {
         SkillEngine.LOGGER.info("Loading skill nodes...");
-        validateSingleSkillTreeProvider(jsons);
         SkillNodeRegistry.clear();
         jsons.forEach((id, element) -> {
             JsonObject obj = element.getAsJsonObject();
             ResourceLocation nodeId = obj.has("id")
                     ? ResourceLocation.parse(obj.get("id").getAsString())
                     : id;
-            String title = obj.get("title").getAsString();
-            String description = obj.get("description").getAsString();
+            Component title = readComponent(obj, "title");
+            Component description = readComponent(obj, "description");
             int cost = obj.get("cost").getAsInt();
             JsonObject pos = obj.getAsJsonObject("position");
             float x = pos.get("x").getAsFloat();
@@ -54,8 +57,15 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
             obj.getAsJsonArray("links").forEach(e ->
                     links.add(ResourceLocation.parse(e.getAsString())));
             List<ResourceLocation> tags = new ArrayList<>();
-            obj.getAsJsonArray("tags").forEach(e ->
-                    tags.add(ResourceLocation.parse(e.getAsString())));
+            if (obj.has("tags")) {
+                obj.getAsJsonArray("tags").forEach(e ->
+                        tags.add(ResourceLocation.parse(e.getAsString())));
+            }
+            ResourceLocation tree = obj.has("tree")
+                    ? ResourceLocation.parse(obj.get("tree").getAsString())
+                    : ResourceLocation.fromNamespaceAndPath(nodeId.getNamespace(), DEFAULT_TREE.getPath());
+            String category = obj.has("category") ? obj.get("category").getAsString() : "";
+            String layer = obj.has("layer") ? obj.get("layer").getAsString() : "";
             ResourceLocation icons = ResourceLocation.parse(obj.get("icons").getAsString());
             Map<String, Integer> prereqAttributes = new HashMap<>();
             if (obj.has("prerequisites")) {
@@ -71,12 +81,15 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
             }
             SkillNode node = new SkillNode(
                     nodeId,
-                    Component.literal(title),
-                    Component.literal(description),
+                    title,
+                    description,
                     cost,
                     x, y,
                     links,
                     tags,
+                    tree,
+                    category,
+                    layer,
                     icons,
                     prereqAttributes,
                     exclusiveWith
@@ -87,28 +100,23 @@ public class SkillNodeLoader extends SimpleJsonResourceReloadListener {
         SkillEngine.LOGGER.info("Loaded {} skill nodes", SkillNodeRegistry.all().size());
     }
 
-    private static void validateSingleSkillTreeProvider(Map<ResourceLocation, JsonElement> jsons) {
-        Map<String, List<ResourceLocation>> providers = new LinkedHashMap<>();
-        jsons.keySet().stream()
-                .filter(id -> !SkillEngine.MODID.equals(id.getNamespace()))
-                .forEach(id -> providers.computeIfAbsent(id.getNamespace(), ignored -> new ArrayList<>()).add(id));
-
-        if (providers.size() <= 1) {
-            return;
+    private static Component readComponent(JsonObject obj, String key) {
+        if (!obj.has(key)) {
+            return Component.empty();
         }
-
-        StringBuilder message = new StringBuilder();
-        message.append("Skill Engine detected multiple mods adding skill tree nodes: ");
-        providers.forEach((namespace, nodeIds) ->
-                message.append(namespace)
-                        .append(" (")
-                        .append(nodeIds.size())
-                        .append(" nodes), "));
-        message.setLength(message.length() - 2);
-        message.append(". Skill Engine supports one skill tree provider at a time because multiple skill trees overlap in the same UI. Remove all but one skill tree addon.");
-
-        String error = message.toString();
-        SkillEngine.LOGGER.error(error);
-        throw new IllegalStateException(error);
+        JsonElement element = obj.get(key);
+        if (element.isJsonObject()) {
+            JsonObject text = element.getAsJsonObject();
+            if (text.has("translate")) {
+                return Component.translatable(text.get("translate").getAsString());
+            }
+            if (text.has("text")) {
+                return Component.literal(text.get("text").getAsString());
+            }
+        }
+        String value = element.getAsString();
+        return TRANSLATION_KEY.matcher(value).matches()
+                ? Component.translatable(value)
+                : Component.literal(value);
     }
 }

@@ -38,6 +38,7 @@ public class SkilltreeScreen extends Screen {
     private SkillNode selectedNode = null;
     private AbilityNode hoveredAbility = null;
     private AbilityNode selectedAbility = null;
+    private ResourceLocation activeTree = null;
 
     public SkilltreeScreen() {
         super(Component.literal("Ascend Skilltree"));
@@ -46,6 +47,11 @@ public class SkilltreeScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        if (activeTree == null || !SkillNodeRegistry.trees().contains(activeTree)) {
+            List<ResourceLocation> trees = SkillNodeRegistry.trees();
+            activeTree = trees.isEmpty() ? null : trees.get(0);
+        }
+        rebuildTreeTabs();
     }
 
     @Override
@@ -141,7 +147,7 @@ public class SkilltreeScreen extends Screen {
     }
 
     private void drawGraph(GuiGraphics gfx) {
-        for (SkillNode node : SkillNodeRegistry.all()) {
+        for (SkillNode node : activeSkillNodes()) {
             int[] p1 = worldToScreen(node.getX(), node.getY());
             for (ResourceLocation neighborId : node.getLinks()) {
                 SkillNode neighbor = SkillNodeRegistry.get(neighborId);
@@ -193,7 +199,7 @@ public class SkilltreeScreen extends Screen {
                 gfx.blit(icon, pos[0] - 8, pos[1] - 8, 0, 0, 16, 16, 16, 16);
             }
         }
-        for (SkillNode node : SkillNodeRegistry.all()) {
+        for (SkillNode node : activeSkillNodes()) {
             int[] pos = worldToScreen(node.getX(), node.getY());
             int color = getNodeColor(node);
             gfx.fill(
@@ -364,6 +370,7 @@ public class SkilltreeScreen extends Screen {
                         );
                         selectedNode = null;
                         clearWidgets();
+                        rebuildTreeTabs();
                     }).pos(x + OVERLAY_WIDTH / 2 - 40, y + OVERLAY_CONTENT_HEIGHT - 20)
                     .size(80, 20)
                     .build());
@@ -371,6 +378,7 @@ public class SkilltreeScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Close"), btn -> {
                     selectedNode = null;
                     clearWidgets();
+                    rebuildTreeTabs();
                 }).pos(x + OVERLAY_WIDTH - 60, y - 5)
                 .size(50, 20)
                 .build());
@@ -391,6 +399,7 @@ public class SkilltreeScreen extends Screen {
                         );
                         selectedAbility = null;
                         clearWidgets();
+                        rebuildTreeTabs();
                     }).pos(x + OVERLAY_WIDTH / 2 - 40, y + OVERLAY_CONTENT_HEIGHT - 20)
                     .size(80, 20)
                     .build());
@@ -398,6 +407,7 @@ public class SkilltreeScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Close"), btn -> {
                     selectedAbility = null;
                     clearWidgets();
+                    rebuildTreeTabs();
                 }).pos(x + OVERLAY_WIDTH - 60, y - 5)
                 .size(50, 20)
                 .build());
@@ -410,7 +420,7 @@ public class SkilltreeScreen extends Screen {
     }
 
     private SkillNode findNodeAt(double mouseX, double mouseY) {
-        for (SkillNode node : SkillNodeRegistry.all()) {
+        for (SkillNode node : activeSkillNodes()) {
             int[] pos = worldToScreen(node.getX(), node.getY());
             if (isPointInCircle(mouseX, mouseY, pos[0], pos[1], NODE_RADIUS)) {
                 return node;
@@ -481,6 +491,35 @@ public class SkilltreeScreen extends Screen {
                 color
         );
         gfx.pose().popPose();
+    }
+
+    private Iterable<SkillNode> activeSkillNodes() {
+        return activeTree != null ? SkillNodeRegistry.byTree(activeTree) : SkillNodeRegistry.all();
+    }
+
+    private void rebuildTreeTabs() {
+        List<ResourceLocation> trees = SkillNodeRegistry.trees();
+        if (trees.size() <= 1 || selectedNode != null || selectedAbility != null) {
+            return;
+        }
+        int x = 10;
+        int y = 28;
+        for (ResourceLocation tree : trees) {
+            String label = tree.toString();
+            int buttonWidth = Math.min(140, Math.max(60, font.width(label) + 16));
+            Button button = addRenderableWidget(Button.builder(Component.literal(label), btn -> {
+                        activeTree = tree;
+                        selectedNode = null;
+                        selectedAbility = null;
+                        clearWidgets();
+                        rebuildTreeTabs();
+                    })
+                    .pos(x, y)
+                    .size(buttonWidth, 20)
+                    .build());
+            button.active = !tree.equals(activeTree);
+            x += buttonWidth + 4;
+        }
     }
 
     @Override

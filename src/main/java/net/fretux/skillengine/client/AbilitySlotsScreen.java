@@ -12,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class AbilitySlotsScreen extends Screen {
     private static final int PANEL_WIDTH = 260;
-    private static final int PANEL_HEIGHT = 180;
+    private static final int MIN_PANEL_HEIGHT = 180;
     private static final int SLOT_TEXT_RIGHT_PADDING = 8;
     private static final int REBIND_BUTTON_WIDTH = 80;
     public AbilitySlotsScreen() {
@@ -22,21 +22,19 @@ public class AbilitySlotsScreen extends Screen {
     @Override
     protected void init() {
         int x = (width - PANEL_WIDTH) / 2;
-        int y = (height - PANEL_HEIGHT) / 2;
+        int panelHeight = panelHeight();
+        int y = (height - panelHeight) / 2;
         int rowY = y + 40;
         int buttonH = 20;
         int buttonX = x + PANEL_WIDTH - REBIND_BUTTON_WIDTH - 15;
-        // Y slot = 1
-        addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(1))
-                .pos(buttonX, rowY).size(REBIND_BUTTON_WIDTH, buttonH).build());
-        // X slot = 2
-        addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(2))
-                .pos(buttonX, rowY + 35).size(REBIND_BUTTON_WIDTH, buttonH).build());
-        // C slot = 3
-        addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(3))
-                .pos(buttonX, rowY + 70).size(REBIND_BUTTON_WIDTH, buttonH).build());
+        int slots = SkilltreeClientState.getAbilitySlots().length;
+        for (int slot = 1; slot <= slots; slot++) {
+            int currentSlot = slot;
+            addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(currentSlot))
+                    .pos(buttonX, rowY + (slot - 1) * 35).size(REBIND_BUTTON_WIDTH, buttonH).build());
+        }
         addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
-                .pos(x + PANEL_WIDTH - 70, y + PANEL_HEIGHT - 28).size(60, 20).build());
+                .pos(x + PANEL_WIDTH - 70, y + panelHeight - 28).size(60, 20).build());
     }
 
     private void openSelect(int slot) {
@@ -57,14 +55,16 @@ public class AbilitySlotsScreen extends Screen {
     public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(gfx);
         int x = (width - PANEL_WIDTH) / 2;
-        int y = (height - PANEL_HEIGHT) / 2;
+        int panelHeight = panelHeight();
+        int y = (height - panelHeight) / 2;
         gfx.fill(0, 0, width, height, 0xAA000000);
-        gfx.fill(x, y, x + PANEL_WIDTH, y + PANEL_HEIGHT, 0xFF222222);
+        gfx.fill(x, y, x + PANEL_WIDTH, y + panelHeight, 0xFF222222);
         gfx.drawCenteredString(font, Component.literal("Ability Slots"), x + PANEL_WIDTH / 2, y + 12, 0xFFFFFF);
         int rowY = y + 40;
-        drawSlotRow(gfx, x + 15, rowY, 1, "Y");
-        drawSlotRow(gfx, x + 15, rowY + 35, 2, "X");
-        drawSlotRow(gfx, x + 15, rowY + 70, 3, "C");
+        int slots = SkilltreeClientState.getAbilitySlots().length;
+        for (int slot = 1; slot <= slots; slot++) {
+            drawSlotRow(gfx, x + 15, rowY + (slot - 1) * 35, slot, "Slot " + slot);
+        }
         super.render(gfx, mouseX, mouseY, partialTick);
     }
 
@@ -105,5 +105,10 @@ public class AbilitySlotsScreen extends Screen {
             return "";
         }
         return font.plainSubstrByWidth(title, availableWidth - suffixWidth) + suffix;
+    }
+
+    private int panelHeight() {
+        int slots = SkilltreeClientState.getAbilitySlots().length;
+        return Math.max(MIN_PANEL_HEIGHT, 80 + slots * 35);
     }
 }

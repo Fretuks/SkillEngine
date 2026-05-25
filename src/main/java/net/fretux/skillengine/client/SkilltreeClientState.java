@@ -14,16 +14,18 @@ public class SkilltreeClientState {
     private static final Set<ResourceLocation> unlocked = new HashSet<>();
     private static final Set<ResourceLocation> unlockedAbilities = new HashSet<>();
     private static int currentSkillPoints = 0;
-    private static final ResourceLocation[] abilitySlots = new ResourceLocation[3];
-    private static final int[] clientCooldowns = new int[3];
+    private static ResourceLocation[] abilitySlots = new ResourceLocation[3];
+    private static int[] clientCooldowns = new int[3];
 
     public static void updateCooldown(int slot, int cd) {
+        ensureSlot(slot);
         int index = slot - 1;
         if (index < 0 || index >= clientCooldowns.length) return;
         clientCooldowns[index] = Math.max(0, cd);
     }
 
     public static int getClientCooldown(int slot) {
+        ensureSlot(slot);
         int index = slot - 1;
         if (index < 0 || index >= clientCooldowns.length) return 0;
         return clientCooldowns[index];
@@ -74,16 +76,20 @@ public class SkilltreeClientState {
     }
 
     public static void bindAbilityLocal(int slot, ResourceLocation abilityId) {
+        ensureSlot(slot);
         PlayerSkillData.bindHelper(slot, abilityId, abilitySlots);
     }
 
     public static void setAbilitySlots(ResourceLocation[] slots) {
+        abilitySlots = new ResourceLocation[slots != null ? slots.length : 3];
+        clientCooldowns = Arrays.copyOf(clientCooldowns, abilitySlots.length);
         for (int i = 0; i < abilitySlots.length; i++) {
             abilitySlots[i] = (slots != null && i < slots.length) ? slots[i] : null;
         }
     }
 
     public static ResourceLocation getAbilityInSlot(int slot) {
+        ensureSlot(slot);
         int index = slot - 1;
         if (index < 0 || index >= abilitySlots.length) return null;
         return abilitySlots[index];
@@ -99,5 +105,11 @@ public class SkilltreeClientState {
 
     public static ResourceLocation[] getAbilitySlots() {
         return Arrays.copyOf(abilitySlots, abilitySlots.length);
+    }
+
+    private static void ensureSlot(int slot) {
+        if (slot <= abilitySlots.length) return;
+        abilitySlots = Arrays.copyOf(abilitySlots, slot);
+        clientCooldowns = Arrays.copyOf(clientCooldowns, slot);
     }
 }

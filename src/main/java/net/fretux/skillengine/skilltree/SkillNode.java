@@ -16,6 +16,9 @@ public class SkillNode {
     private final float y;
     private final List<ResourceLocation> links;
     private final List<ResourceLocation> tags;
+    private final ResourceLocation tree;
+    private final String category;
+    private final String layer;
     private final ResourceLocation icons;
     private final Map<String, Integer> prereqAttributes;
     private final List<ResourceLocation> exclusiveWith;
@@ -27,6 +30,9 @@ public class SkillNode {
                      float x, float y,
                      List<ResourceLocation> links,
                      List<ResourceLocation> tags,
+                     ResourceLocation tree,
+                     String category,
+                     String layer,
                      ResourceLocation icons,
                      Map<String, Integer> prereqAttributes,
                      List<ResourceLocation> exclusiveWith){
@@ -39,6 +45,9 @@ public class SkillNode {
         this.y = y;
         this.links = List.copyOf(links);
         this.tags = List.copyOf(tags);
+        this.tree = tree;
+        this.category = category;
+        this.layer = layer;
         this.icons = icons;
         this.prereqAttributes = Map.copyOf(prereqAttributes);
         this.exclusiveWith = List.copyOf(exclusiveWith);
@@ -74,6 +83,18 @@ public class SkillNode {
 
     public List<ResourceLocation> getTags() {
         return tags;
+    }
+
+    public ResourceLocation getTree() {
+        return tree;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public String getLayer() {
+        return layer;
     }
 
     public ResourceLocation getIcons() {

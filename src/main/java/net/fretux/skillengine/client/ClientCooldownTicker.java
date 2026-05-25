@@ -5,10 +5,11 @@ import net.minecraftforge.event.TickEvent;
 public class ClientCooldownTicker {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        for (int i = 0; i < 3; i++) {
-            int cd = SkilltreeClientState.getClientCooldown(i + 1);
+        int slots = SkilltreeClientState.getAbilitySlots().length;
+        for (int slot = 1; slot <= slots; slot++) {
+            int cd = SkilltreeClientState.getClientCooldown(slot);
             if (cd > 0) {
-                SkilltreeClientState.updateCooldown(i + 1, cd - 1);
+                SkilltreeClientState.updateCooldown(slot, cd - 1);
             }
         }
     }

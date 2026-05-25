@@ -23,7 +23,7 @@ public class AbilityCooldownHandler {
             data.tickCooldowns();
             data.tickTagCooldowns();
             if (player.tickCount % 10 == 0) {
-                for (int i = 1; i <= 3; i++) {
+                for (int i = 1; i <= data.getAbilitySlots().length; i++) {
                     PacketHandler.CHANNEL.send(
                             PacketDistributor.PLAYER.with(() -> player),
                             new ClientboundSyncCooldownPacket(i, data.getCooldown(i))
