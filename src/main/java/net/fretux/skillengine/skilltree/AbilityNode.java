@@ -49,8 +49,6 @@ public class AbilityNode {
     public int getCooldown() { return cooldown; }
 
     public void execute(ServerPlayer player) {
-        if (!AbilityHandlerRegistry.execute(player, this)) {
-            player.sendSystemMessage(Component.literal("Activated ability: " + id));
-        }
+        AbilityHandlerRegistry.execute(player, this);
     }
 }
