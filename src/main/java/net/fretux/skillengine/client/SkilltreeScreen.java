@@ -30,6 +30,9 @@ public class SkilltreeScreen extends Screen {
     private static final int OVERLAY_CONTENT_HEIGHT = 160;
     private static final float ZOOM_STEP = 0.1f;
     private static final float LINE_THICKNESS = 2.0f;
+    private static final int GRID_SIZE = 32;
+    private static final int PANEL_BORDER = 0xFF53647A;
+    private static final int PANEL_BACKGROUND = 0xF0181D26;
     private float zoom = 1.0f;
     private double panX = 0;
     private double panY = 0;
@@ -124,6 +127,7 @@ public class SkilltreeScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         this.renderBackground(gfx);
+        renderTreeBackdrop(gfx);
         renderSkillPointHeader(gfx);
         hoveredNode = findNodeAt(mouseX, mouseY);
         hoveredAbility = findAbilityAt(mouseX, mouseY);
@@ -141,9 +145,30 @@ public class SkilltreeScreen extends Screen {
 
     private void renderSkillPointHeader(GuiGraphics gfx) {
         int remaining = SkilltreeClientState.getCurrentSkillPoints();
-        Component pointsText = Component.literal("Skillpoints Remaining: " + remaining)
-                .withStyle(ChatFormatting.YELLOW);
-        gfx.drawString(font, pointsText, 10, 10, 0xFFFFFF);
+        Component pointsText = Component.literal("Skill Points  ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.valueOf(remaining)).withStyle(ChatFormatting.GOLD));
+        int panelWidth = font.width(pointsText) + 16;
+        gfx.fill(7, 6, 7 + panelWidth, 24, 0xAA080B10);
+        gfx.fill(7, 6, 9, 24, 0xFFFFC857);
+        gfx.drawString(font, pointsText, 14, 11, 0xFFFFFF, true);
+        Component hint = Component.literal("Drag to pan  •  Scroll to zoom")
+                .withStyle(ChatFormatting.DARK_GRAY);
+        gfx.drawString(font, hint, width - font.width(hint) - 10, 11, 0xFFFFFF, false);
+    }
+
+    private void renderTreeBackdrop(GuiGraphics gfx) {
+        gfx.fill(0, 0, width, height, 0xD00B0E14);
+        int spacing = Math.max(16, (int) (GRID_SIZE * zoom));
+        int offsetX = Math.floorMod((int) panX + width / 2, spacing);
+        int offsetY = Math.floorMod((int) panY + height / 2, spacing);
+        for (int x = offsetX; x < width; x += spacing) {
+            gfx.fill(x, 0, x + 1, height, 0x182A3442);
+        }
+        for (int y = offsetY; y < height; y += spacing) {
+            gfx.fill(0, y, width, y + 1, 0x182A3442);
+        }
+        gfx.fill(0, 0, width, 1, 0x8053647A);
     }
 
     private void drawGraph(GuiGraphics gfx) {
@@ -156,8 +181,8 @@ public class SkilltreeScreen extends Screen {
                 boolean bothUnlocked =
                         SkilltreeClientState.isUnlocked(node.getId()) &&
                                 SkilltreeClientState.isUnlocked(neighbor.getId());
-                int linkColor = bothUnlocked ? 0xFF88FF88 : 0xFF666666;
-                drawLine(gfx, p1[0], p1[1], p2[0], p2[1], linkColor);
+                int linkColor = bothUnlocked ? 0xFF6EDC8A : 0xFF4A5361;
+                drawConnection(gfx, p1[0], p1[1], p2[0], p2[1], linkColor);
             }
         }
         for (AbilityNode ability : AbilityNodeRegistry.all()) {
@@ -167,10 +192,10 @@ public class SkilltreeScreen extends Screen {
                 AbilityNode ability2 = AbilityNodeRegistry.get(link);
                 if (node != null) {
                     int[] p2 = worldToScreen(node.getX(), node.getY());
-                    drawLine(gfx, p1[0], p1[1], p2[0], p2[1], 0xFF6666AA);
+                    drawConnection(gfx, p1[0], p1[1], p2[0], p2[1], 0xFF6579C7);
                 } else if (ability2 != null) {
                     int[] p2 = worldToScreen(ability2.getX(), ability2.getY());
-                    drawLine(gfx, p1[0], p1[1], p2[0], p2[1], 0xFF6666AA);
+                    drawConnection(gfx, p1[0], p1[1], p2[0], p2[1], 0xFF6579C7);
                 }
             }
         }
@@ -187,13 +212,8 @@ public class SkilltreeScreen extends Screen {
             } else {
                 color = 0xFF223355;
             }
-            gfx.fill(
-                    pos[0] - ABILITY_RADIUS,
-                    pos[1] - ABILITY_RADIUS,
-                    pos[0] + ABILITY_RADIUS,
-                    pos[1] + ABILITY_RADIUS,
-                    color
-            );
+            renderNodeFrame(gfx, pos[0], pos[1], ABILITY_RADIUS, color,
+                    ability == hoveredAbility, ability == selectedAbility, true);
             ResourceLocation icon = ability.getIcon();
             if (icon != null) {
                 gfx.blit(icon, pos[0] - 8, pos[1] - 8, 0, 0, 16, 16, 16, 16);
@@ -202,13 +222,8 @@ public class SkilltreeScreen extends Screen {
         for (SkillNode node : activeSkillNodes()) {
             int[] pos = worldToScreen(node.getX(), node.getY());
             int color = getNodeColor(node);
-            gfx.fill(
-                    pos[0] - NODE_RADIUS,
-                    pos[1] - NODE_RADIUS,
-                    pos[0] + NODE_RADIUS,
-                    pos[1] + NODE_RADIUS,
-                    color
-            );
+            renderNodeFrame(gfx, pos[0], pos[1], NODE_RADIUS, color,
+                    node == hoveredNode, node == selectedNode, false);
             ResourceLocation icon = node.getIcons();
             if (icon != null) {
                 int size = 16;
@@ -222,6 +237,22 @@ public class SkilltreeScreen extends Screen {
                 );
             }
         }
+    }
+
+    private void renderNodeFrame(GuiGraphics gfx, int cx, int cy, int radius, int color,
+                                 boolean hovered, boolean selected, boolean ability) {
+        int glow = ability ? 0x554B79D8 : 0x554FCB72;
+        if (hovered || selected) {
+            int spread = selected ? 5 : 3;
+            gfx.fill(cx - radius - spread, cy - radius - spread,
+                    cx + radius + spread, cy + radius + spread, glow);
+        }
+        gfx.fill(cx - radius - 2, cy - radius, cx + radius + 2, cy + radius, 0xAA05070A);
+        gfx.fill(cx - radius, cy - radius - 2, cx + radius, cy + radius + 2, 0xAA05070A);
+        int border = selected ? 0xFFFFD36A : hovered ? 0xFFE4EBF5 : ability ? 0xFF829BEB : 0xFF778394;
+        gfx.fill(cx - radius - 1, cy - radius - 1, cx + radius + 1, cy + radius + 1, border);
+        gfx.fill(cx - radius + 1, cy - radius + 1, cx + radius - 1, cy + radius - 1, color);
+        gfx.fill(cx - radius + 2, cy - radius + 2, cx + radius - 2, cy - radius + 4, 0x35FFFFFF);
     }
 
     private void renderNodeTooltip(GuiGraphics gfx, SkillNode node, int mouseX, int mouseY) {
@@ -272,7 +303,7 @@ public class SkilltreeScreen extends Screen {
         int x = (width - OVERLAY_WIDTH) / 2;
         int y = (height - OVERLAY_HEIGHT) / 2;
         gfx.fill(0, 0, width, height, 0x88000000);
-        gfx.fill(x, y, x + OVERLAY_WIDTH, y + OVERLAY_HEIGHT, 0xFF222222);
+        renderOverlayPanel(gfx, x, y);
         gfx.drawCenteredString(font, node.getTitle(), x + OVERLAY_WIDTH / 2, y + 10, 0xFFFFFF);
         gfx.drawWordWrap(font, node.getDescription(), x + 10, y + 30, OVERLAY_WIDTH - 20, 0xDDDDDD);
         final int[] textY = {y + 95};
@@ -315,7 +346,7 @@ public class SkilltreeScreen extends Screen {
         int x = (width - OVERLAY_WIDTH) / 2;
         int y = (height - OVERLAY_HEIGHT) / 2;
         gfx.fill(0, 0, width, height, 0x88000000);
-        gfx.fill(x, y, x + OVERLAY_WIDTH, y + OVERLAY_HEIGHT, 0xFF222222);
+        renderOverlayPanel(gfx, x, y);
         gfx.drawCenteredString(font, ability.getTitle(), x + OVERLAY_WIDTH / 2, y + 10, 0xFFFFFF);
         int textY = y + 30;
         if (ability.getDescription() != null) {
@@ -353,6 +384,14 @@ public class SkilltreeScreen extends Screen {
                 textY += 12;
             }
         }
+    }
+
+    private void renderOverlayPanel(GuiGraphics gfx, int x, int y) {
+        gfx.fill(x - 2, y - 2, x + OVERLAY_WIDTH + 2, y + OVERLAY_HEIGHT + 2, 0x99000000);
+        gfx.fill(x - 1, y - 1, x + OVERLAY_WIDTH + 1, y + OVERLAY_HEIGHT + 1, PANEL_BORDER);
+        gfx.fill(x, y, x + OVERLAY_WIDTH, y + OVERLAY_HEIGHT, PANEL_BACKGROUND);
+        gfx.fill(x, y, x + OVERLAY_WIDTH, y + 3, 0xFF6C83A3);
+        gfx.fill(x + 8, y + 23, x + OVERLAY_WIDTH - 8, y + 24, 0x6653647A);
     }
 
     private void rebuildOverlayButtons() {
@@ -491,6 +530,11 @@ public class SkilltreeScreen extends Screen {
                 color
         );
         gfx.pose().popPose();
+    }
+
+    private void drawConnection(GuiGraphics gfx, int x1, int y1, int x2, int y2, int color) {
+        drawLine(gfx, x1 + 1, y1 + 2, x2 + 1, y2 + 2, 0x99000000);
+        drawLine(gfx, x1, y1, x2, y2, color);
     }
 
     private Iterable<SkillNode> activeSkillNodes() {
