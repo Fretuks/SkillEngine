@@ -69,7 +69,8 @@ public class AbilitySlotsScreen extends Screen {
     }
 
     private void drawSlotRow(GuiGraphics gfx, int x, int y, int slot, String label) {
-        gfx.drawString(font, label + ":", x, y + 6, 0xFFFFFF);
+        String slotLabel = label + ":";
+        gfx.drawString(font, slotLabel, x, y + 6, 0xFFFFFF);
         ResourceLocation abilityId = SkilltreeClientState.getAbilityInSlot(slot);
         String title = "Empty";
         ResourceLocation icon = null;
@@ -83,11 +84,12 @@ public class AbilitySlotsScreen extends Screen {
             }
         }
         if (icon != null) {
-            gfx.blit(icon, x + 20, y - 2, 0, 0, 20, 20, 20, 20);
-            int textX = x + 46;
+            int iconX = x + font.width(slotLabel) + 6;
+            gfx.blit(icon, iconX, y - 2, 0, 0, 20, 20, 20, 20);
+            int textX = iconX + 26;
             gfx.drawString(font, fitTitle(title, textX), textX, y + 6, 0xDDDDDD);
         } else {
-            int textX = x + 20;
+            int textX = x + font.width(slotLabel) + 6;
             gfx.drawString(font, fitTitle(title, textX), textX, y + 6, 0x888888);
         }
     }

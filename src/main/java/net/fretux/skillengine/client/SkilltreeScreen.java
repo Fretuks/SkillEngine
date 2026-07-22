@@ -42,6 +42,10 @@ public class SkilltreeScreen extends Screen {
     private AbilityNode hoveredAbility = null;
     private AbilityNode selectedAbility = null;
     private ResourceLocation activeTree = null;
+    private ResourceLocation highlightedNode = null;
+    private ResourceLocation highlightedAbility = null;
+    private boolean highlightSkillPoints = false;
+    private Component unlockFailureMessage = null;
 
     public SkilltreeScreen() {
         super(Component.literal("Ascend Skilltree"));
@@ -132,6 +136,7 @@ public class SkilltreeScreen extends Screen {
         hoveredNode = findNodeAt(mouseX, mouseY);
         hoveredAbility = findAbilityAt(mouseX, mouseY);
         drawGraph(gfx);
+        renderUnlockFailure(gfx);
         if (hoveredNode != null && selectedNode == null && selectedAbility == null) {
             renderNodeTooltip(gfx, hoveredNode, mouseX, mouseY);
         }
@@ -150,7 +155,13 @@ public class SkilltreeScreen extends Screen {
                 .append(Component.literal(String.valueOf(remaining)).withStyle(ChatFormatting.GOLD));
         int panelWidth = font.width(pointsText) + 16;
         gfx.fill(7, 6, 7 + panelWidth, 24, 0xAA080B10);
-        gfx.fill(7, 6, 9, 24, 0xFFFFC857);
+        gfx.fill(7, 6, 9, 24, highlightSkillPoints ? 0xFFFF4545 : 0xFFFFC857);
+        if (highlightSkillPoints) {
+            gfx.fill(5, 4, 7 + panelWidth + 2, 6, 0xFFFF4545);
+            gfx.fill(5, 24, 7 + panelWidth + 2, 26, 0xFFFF4545);
+            gfx.fill(5, 4, 7, 26, 0xFFFF4545);
+            gfx.fill(7 + panelWidth, 4, 7 + panelWidth + 2, 26, 0xFFFF4545);
+        }
         gfx.drawString(font, pointsText, 14, 11, 0xFFFFFF, true);
         Component hint = Component.literal("Drag to pan  •  Scroll to zoom")
                 .withStyle(ChatFormatting.DARK_GRAY);
@@ -203,7 +214,9 @@ public class SkilltreeScreen extends Screen {
             int[] pos = worldToScreen(ability.getX(), ability.getY());
             boolean unlocked = SkilltreeClientState.isAbilityUnlocked(ability.getId());
             int color;
-            if (ability == selectedAbility) {
+            if (ability.getId().equals(highlightedAbility)) {
+                color = 0xFFFF4545;
+            } else if (ability == selectedAbility) {
                 color = 0xFFAA8833;
             } else if (ability == hoveredAbility) {
                 color = 0xFF8888AA;
@@ -404,6 +417,12 @@ public class SkilltreeScreen extends Screen {
         boolean alreadyUnlocked = SkilltreeClientState.isUnlocked(selectedNode.getId());
         if (!alreadyUnlocked) {
             addRenderableWidget(Button.builder(Component.literal("Unlock"), btn -> {
+                        if (!prepareSkillUnlock(selectedNode)) {
+                            selectedNode = null;
+                            clearWidgets();
+                            rebuildTreeTabs();
+                            return;
+                        }
                         PacketHandler.CHANNEL.sendToServer(
                                 new ServerboundUnlockNodePacket(selectedNode.getId())
                         );
@@ -433,6 +452,12 @@ public class SkilltreeScreen extends Screen {
         boolean unlocked = SkilltreeClientState.isAbilityUnlocked(selectedAbility.getId());
         if (!unlocked) {
             addRenderableWidget(Button.builder(Component.literal("Unlock"), btn -> {
+                        if (!prepareAbilityUnlock(selectedAbility)) {
+                            selectedAbility = null;
+                            clearWidgets();
+                            rebuildTreeTabs();
+                            return;
+                        }
                         PacketHandler.CHANNEL.sendToServer(
                                 new ServerboundUnlockNodePacket(selectedAbility.getId())
                         );
@@ -491,7 +516,9 @@ public class SkilltreeScreen extends Screen {
         boolean unlocked = SkilltreeClientState.isUnlocked(node.getId());
         boolean lockedByExclusivity = isLockedByExclusivity(node);
         int color;
-        if (lockedByExclusivity) {
+        if (node.getId().equals(highlightedNode)) {
+            color = 0xFFFF4545;
+        } else if (lockedByExclusivity) {
             color = 0xFFCC3333;
         } else if (node == selectedNode) {
             color = 0xFF999933;
@@ -512,6 +539,87 @@ public class SkilltreeScreen extends Screen {
             }
         }
         return color;
+    }
+
+    private boolean prepareSkillUnlock(SkillNode target) {
+        clearUnlockHighlights();
+        for (ResourceLocation parentId : target.getLinks()) {
+            if (SkilltreeClientState.isUnlocked(parentId)) continue;
+            SkillNode parent = SkillNodeRegistry.get(parentId);
+            highlightedNode = parentId;
+            Component parentName = parent != null ? parent.getTitle() : Component.literal(parentId.toString());
+            unlockFailureMessage = Component.literal("Unlock ")
+                    .append(parentName.copy().withStyle(ChatFormatting.YELLOW))
+                    .append(Component.literal(" first — it is required for "))
+                    .append(target.getTitle().copy().withStyle(ChatFormatting.WHITE));
+            return false;
+        }
+        if (!meetsClientAttributes(target)) {
+            highlightedNode = target.getId();
+            unlockFailureMessage = Component.literal("Attribute requirements are not met for ")
+                    .append(target.getTitle().copy().withStyle(ChatFormatting.YELLOW));
+            return false;
+        }
+        if (SkilltreeClientState.getCurrentSkillPoints() < Math.max(0, target.getCost())) {
+            highlightSkillPoints = true;
+            unlockFailureMessage = Component.literal("Not enough skill points to unlock ")
+                    .append(target.getTitle().copy().withStyle(ChatFormatting.YELLOW));
+            return false;
+        }
+        return true;
+    }
+
+    private boolean meetsClientAttributes(SkillNode node) {
+        if (node.getPrereqAttributes().isEmpty()) return true;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) return false;
+        return minecraft.player.getCapability(PlayerStatsProvider.PLAYER_STATS)
+                .map(stats -> node.getPrereqAttributes().entrySet().stream()
+                        .allMatch(entry -> stats.getAttributeLevel(entry.getKey()) >= entry.getValue()))
+                .orElse(false);
+    }
+
+    private boolean prepareAbilityUnlock(AbilityNode ability) {
+        clearUnlockHighlights();
+        for (ResourceLocation parentId : ability.getLinks()) {
+            if (SkilltreeClientState.isUnlocked(parentId)
+                    || SkilltreeClientState.isAbilityUnlocked(parentId)) continue;
+            SkillNode parentNode = SkillNodeRegistry.get(parentId);
+            if (parentNode != null) {
+                highlightedNode = parentId;
+            } else {
+                highlightedAbility = parentId;
+            }
+            Component parentName = parentNode != null
+                    ? parentNode.getTitle()
+                    : AbilityNodeRegistry.get(parentId) != null
+                    ? AbilityNodeRegistry.get(parentId).getTitle()
+                    : Component.literal(parentId.toString());
+            unlockFailureMessage = Component.literal("Unlock ")
+                    .append(parentName.copy().withStyle(ChatFormatting.YELLOW))
+                    .append(Component.literal(" first — it is required for "))
+                    .append(ability.getTitle().copy().withStyle(ChatFormatting.WHITE));
+            return false;
+        }
+        return true;
+    }
+
+    private void clearUnlockHighlights() {
+        highlightedNode = null;
+        highlightedAbility = null;
+        highlightSkillPoints = false;
+        unlockFailureMessage = null;
+    }
+
+    private void renderUnlockFailure(GuiGraphics gfx) {
+        if (unlockFailureMessage == null) return;
+        int messageWidth = Math.min(width - 40, font.width(unlockFailureMessage) + 20);
+        int x = (width - messageWidth) / 2;
+        int y = height - 34;
+        gfx.fill(x - 2, y - 2, x + messageWidth + 2, y + 18, 0xCC000000);
+        gfx.fill(x, y, x + messageWidth, y + 16, 0xE0421717);
+        gfx.fill(x, y, x + 3, y + 16, 0xFFFF4545);
+        gfx.drawCenteredString(font, unlockFailureMessage, width / 2, y + 4, 0xFFFFFF);
     }
 
     private void drawLine(GuiGraphics gfx, int x1, int y1, int x2, int y2, int color) {
