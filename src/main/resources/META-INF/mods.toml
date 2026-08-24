@@ -69,7 +69,7 @@ side = "BOTH"
 [[dependencies.${ mod_id }]]
 modId = "ascend"
 mandatory = true
-versionRange = "[2.0.2,)"
+versionRange = "[3.0.0,)"
 ordering = "AFTER"
 side = "BOTH"
 

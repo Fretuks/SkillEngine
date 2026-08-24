@@ -17,9 +17,8 @@ import java.util.*;
 @Mod.EventBusSubscriber(modid = SkillEngine.MODID)
 public class AscendResetDetector {
     private static final String[] ASCEND_ATTRIBUTES = new String[]{
-            "strength", "agility", "fortitude", "intelligence",
-            "willpower", "charisma",
-            "light_scaling", "medium_scaling", "heavy_scaling", "magic_scaling"
+            "vigor", "mind", "strength", "agility", "intelligence",
+            "willpower", "charisma", "arcane"
     };
     private static final Map<UUID, Integer> LAST_ATTRIBUTE_SUM = new HashMap<>();
     private static final Map<UUID, Integer> LAST_UNSPENT = new HashMap<>();
