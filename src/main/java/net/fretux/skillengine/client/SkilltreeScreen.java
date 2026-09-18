@@ -25,6 +25,7 @@ import java.util.List;
 public class SkilltreeScreen extends Screen {
     private static final int NODE_RADIUS = 12;
     private static final int ABILITY_RADIUS = 12;
+    private static final int NODE_ICON_SIZE = 16;
     private static final int OVERLAY_WIDTH = 240;
     private static final int OVERLAY_HEIGHT = 180;
     private static final int OVERLAY_CONTENT_HEIGHT = 160;
@@ -212,6 +213,7 @@ public class SkilltreeScreen extends Screen {
         }
         for (AbilityNode ability : AbilityNodeRegistry.all()) {
             int[] pos = worldToScreen(ability.getX(), ability.getY());
+            int radius = getRenderedNodeRadius(ABILITY_RADIUS);
             boolean unlocked = SkilltreeClientState.isAbilityUnlocked(ability.getId());
             int color;
             if (ability.getId().equals(highlightedAbility)) {
@@ -225,28 +227,33 @@ public class SkilltreeScreen extends Screen {
             } else {
                 color = 0xFF223355;
             }
-            renderNodeFrame(gfx, pos[0], pos[1], ABILITY_RADIUS, color,
+            renderNodeFrame(gfx, pos[0], pos[1], radius, color,
                     ability == hoveredAbility, ability == selectedAbility, true);
             ResourceLocation icon = ability.getIcon();
             if (icon != null) {
-                gfx.blit(icon, pos[0] - 8, pos[1] - 8, 0, 0, 16, 16, 16, 16);
+                int size = getRenderedNodeIconSize();
+                gfx.blit(icon, pos[0] - size / 2, pos[1] - size / 2,
+                        size, size, 0, 0,
+                        NODE_ICON_SIZE, NODE_ICON_SIZE, NODE_ICON_SIZE, NODE_ICON_SIZE);
             }
         }
         for (SkillNode node : activeSkillNodes()) {
             int[] pos = worldToScreen(node.getX(), node.getY());
+            int radius = getRenderedNodeRadius(NODE_RADIUS);
             int color = getNodeColor(node);
-            renderNodeFrame(gfx, pos[0], pos[1], NODE_RADIUS, color,
+            renderNodeFrame(gfx, pos[0], pos[1], radius, color,
                     node == hoveredNode, node == selectedNode, false);
             ResourceLocation icon = node.getIcons();
             if (icon != null) {
-                int size = 16;
+                int size = getRenderedNodeIconSize();
                 gfx.blit(
                         icon,
                         pos[0] - size / 2,
                         pos[1] - size / 2,
-                        0, 0,
                         size, size,
-                        size, size
+                        0, 0,
+                        NODE_ICON_SIZE, NODE_ICON_SIZE,
+                        NODE_ICON_SIZE, NODE_ICON_SIZE
                 );
             }
         }
@@ -484,9 +491,10 @@ public class SkilltreeScreen extends Screen {
     }
 
     private SkillNode findNodeAt(double mouseX, double mouseY) {
+        int radius = getRenderedNodeRadius(NODE_RADIUS);
         for (SkillNode node : activeSkillNodes()) {
             int[] pos = worldToScreen(node.getX(), node.getY());
-            if (isPointInCircle(mouseX, mouseY, pos[0], pos[1], NODE_RADIUS)) {
+            if (isPointInCircle(mouseX, mouseY, pos[0], pos[1], radius)) {
                 return node;
             }
         }
@@ -494,13 +502,22 @@ public class SkilltreeScreen extends Screen {
     }
 
     private AbilityNode findAbilityAt(double mouseX, double mouseY) {
+        int radius = getRenderedNodeRadius(ABILITY_RADIUS);
         for (AbilityNode ability : AbilityNodeRegistry.all()) {
             int[] pos = worldToScreen(ability.getX(), ability.getY());
-            if (isPointInCircle(mouseX, mouseY, pos[0], pos[1], ABILITY_RADIUS)) {
+            if (isPointInCircle(mouseX, mouseY, pos[0], pos[1], radius)) {
                 return ability;
             }
         }
         return null;
+    }
+
+    private int getRenderedNodeRadius(int baseRadius) {
+        return Math.max(1, Math.round(baseRadius * Math.min(1.0f, zoom)));
+    }
+
+    private int getRenderedNodeIconSize() {
+        return Math.max(1, Math.round(NODE_ICON_SIZE * Math.min(1.0f, zoom)));
     }
 
     private boolean isPointInCircle(double mx, double my, int cx, int cy, int radius) {
