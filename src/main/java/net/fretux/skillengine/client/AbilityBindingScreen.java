@@ -18,11 +18,11 @@ import java.util.List;
 public class AbilityBindingScreen extends Screen {
 
     private static final int PANEL_WIDTH = 280;
-    private static final int PANEL_HEIGHT = 180;
-    private static final int PANEL_PADDING = 10;
+    private static final int PANEL_HEIGHT = 204;
+    private static final int PANEL_PADDING = 16;
     private static final int SLOT_BUTTON_WIDTH = 76;
     private static final int BUTTON_HEIGHT = 20;
-    private static final int BUTTON_GAP = 8;
+    private static final int BUTTON_GAP = 6;
 
     private final AbilityNode ability;
 
@@ -43,7 +43,7 @@ public class AbilityBindingScreen extends Screen {
         int boundSlot = SkilltreeClientState.getSlotOfAbility(ability.getId());
         for (int slot = 1; slot <= visibleSlots; slot++) {
             int currentSlot = slot;
-            Button button = addRenderableWidget(Button.builder(Component.literal("Slot " + slot),
+            Button button = addRenderableWidget(SkillUi.button(Component.literal("Slot " + slot),
                     b -> bind(currentSlot))
                     .pos(buttonX + (SLOT_BUTTON_WIDTH + BUTTON_GAP) * (slot - 1), buttonY)
                     .size(SLOT_BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -53,7 +53,7 @@ public class AbilityBindingScreen extends Screen {
                 button.setMessage(Component.literal("Bound " + slot));
             }
         }
-        addRenderableWidget(Button.builder(Component.literal("Cancel"),
+        addRenderableWidget(SkillUi.button(Component.literal("Cancel"),
                 b -> onClose()).pos(x + PANEL_WIDTH / 2 - 40, y + PANEL_HEIGHT - 28).size(80, BUTTON_HEIGHT).build());
     }
 
@@ -84,14 +84,15 @@ public class AbilityBindingScreen extends Screen {
         int x = (width - PANEL_WIDTH) / 2;
         int y = (height - PANEL_HEIGHT) / 2;
         gfx.fill(0, 0, width, height, 0xAA000000);
-        gfx.fill(x, y, x + PANEL_WIDTH, y + PANEL_HEIGHT, 0xFF222222);
+        SkillUi.panel(gfx, x, y, PANEL_WIDTH, PANEL_HEIGHT);
+        gfx.drawString(font, "ASSIGN ABILITY", x + 16, y + 14, SkillUi.ACCENT, false);
         ResourceLocation icon = ability.getIcon();
         if (icon != null) {
-            gfx.blit(icon, x + PANEL_WIDTH / 2 - 10, y + 10, 0, 0, 20, 20, 20, 20);
+            gfx.blit(icon, x + 16, y + 34, 0, 0, 20, 20, 20, 20);
         }
-        gfx.drawCenteredString(font, ability.getTitle(), x + PANEL_WIDTH / 2, y + 35, 0xFFFFFF);
+        gfx.drawString(font, font.plainSubstrByWidth(ability.getTitle().getString(), PANEL_WIDTH - 64), x + 44, y + 40, SkillUi.TEXT, false);
         if (ability.getDescription() != null) {
-            drawDescription(gfx, x + PANEL_PADDING, y + 50, y + PANEL_HEIGHT - 60);
+            drawDescription(gfx, x + PANEL_PADDING, y + 66, y + PANEL_HEIGHT - 60);
         }
 
         super.render(gfx, mouseX, mouseY, partialTick);
@@ -109,8 +110,8 @@ public class AbilityBindingScreen extends Screen {
             if (lineY + font.lineHeight > bottomY) {
                 break;
             }
-            gfx.drawString(font, line.getString(), x, lineY, 0xDDDDDD);
-            lineY += font.lineHeight;
+            gfx.drawString(font, line.getString(), x, lineY, SkillUi.MUTED);
+            lineY += font.lineHeight + 3;
         }
     }
 }

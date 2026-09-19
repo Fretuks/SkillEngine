@@ -9,9 +9,11 @@ import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
 import net.fretux.skillengine.skilltree.SkillNode;
 import net.fretux.skillengine.skilltree.SkillNodeRegistry;
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -19,22 +21,39 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 
 public class SkilltreeScreen extends Screen {
     private static final int NODE_RADIUS = 12;
     private static final int ABILITY_RADIUS = 12;
     private static final int NODE_ICON_SIZE = 16;
-    private static final int OVERLAY_WIDTH = 240;
-    private static final int OVERLAY_HEIGHT = 180;
-    private static final int OVERLAY_CONTENT_HEIGHT = 160;
+    private static final int OVERLAY_WIDTH = 280;
+    private static final int UNAVAILABLE = 0xFF777D85;
+    private static final int AVAILABLE = 0xFFD0A447;
+    private static final int UNLOCKED = 0xFF72B77A;
+    private static final int BLOCKED = 0xFFD16A65;
+    private static final int LOCKED_PATH = 0xFF383D43;
+
+    private record PathNode(ResourceLocation id, boolean ability) {}
+    private record Connection(int x1, int y1, int x2, int y2, int color, boolean traced) {}
+    private Button unlockButton;
+    private Button inspectorCloseButton;
+    private long inspectorOpenedAt;
+    private int inspectorSlideOffset;
+    private int inspectorAnimationStartOffset;
+    private boolean inspectorClosing;
+    private static final float INSPECTOR_SLIDE_MS = 180.0f;
+    private boolean legendOpen;
     private static final float ZOOM_STEP = 0.1f;
     private static final float LINE_THICKNESS = 2.0f;
     private static final int GRID_SIZE = 32;
-    private static final int PANEL_BORDER = 0xFF53647A;
-    private static final int PANEL_BACKGROUND = 0xF0181D26;
     private float zoom = 1.0f;
+    private int detailScroll;
+    private int maxDetailScroll;
     private double panX = 0;
     private double panY = 0;
     private boolean dragging = false;
@@ -59,11 +78,18 @@ public class SkilltreeScreen extends Screen {
             List<ResourceLocation> trees = SkillNodeRegistry.trees();
             activeTree = trees.isEmpty() ? null : trees.get(0);
         }
-        rebuildTreeTabs();
+        if (selectedNode != null) rebuildOverlayButtons();
+        else if (selectedAbility != null) rebuildAbilityOverlayButtons();
+        else rebuildTreeTabs();
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (legendOpen && isOverLegend(mouseX, mouseY)) return true;
+        if (hasSelection() && isOverInspector(mouseX, mouseY)) {
+            detailScroll = Mth.clamp(detailScroll - (int) (delta * 12), 0, maxDetailScroll);
+            return true;
+        }
         zoom += (float) (delta * ZOOM_STEP);
         float minZoom = 0.5f;
         float maxZoom = 2.0f;
@@ -73,46 +99,49 @@ public class SkilltreeScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (selectedNode != null || selectedAbility != null) {
-            return super.mouseClicked(mouseX, mouseY, button);
-        }
+        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (legendOpen && isOverLegend(mouseX, mouseY)) return true;
+        if (hasSelection() && isOverInspector(mouseX, mouseY)) return true;
+        if (children().stream().anyMatch(child -> child.isMouseOver(mouseX, mouseY))) return true;
+        if (mouseY < 36 || mouseY >= height - 23) return false;
         if (button == 0) {
             SkillNode clickedNode = findNodeAt(mouseX, mouseY);
             if (clickedNode != null) {
-                if (isLockedByExclusivity(clickedNode)) {
-                    assert Minecraft.getInstance().player != null;
-                    Minecraft.getInstance().player.playSound(
-                            net.minecraft.sounds.SoundEvents.VILLAGER_NO, 1f, 1f
-                    );
+                if (clickedNode == selectedNode) {
+                    closeInspector();
                     return true;
                 }
-                if (SkilltreeClientState.isUnlocked(clickedNode.getId())) {
-                    return true;
-                }
+                selectedAbility = null;
                 selectedNode = clickedNode;
                 rebuildOverlayButtons();
+                revealSelection(clickedNode.getX(), clickedNode.getY());
                 return true;
             }
             AbilityNode clickedAbility = findAbilityAt(mouseX, mouseY);
             if (clickedAbility != null) {
+                if (clickedAbility == selectedAbility) {
+                    closeInspector();
+                    return true;
+                }
+                selectedNode = null;
                 if (SkilltreeClientState.isAbilityUnlocked(clickedAbility.getId())) {
                     Minecraft.getInstance().setScreen(new AbilityBindingScreen(clickedAbility));
                 } else {
                     selectedAbility = clickedAbility;
                     rebuildAbilityOverlayButtons();
+                    revealSelection(clickedAbility.getX(), clickedAbility.getY());
                 }
                 return true;
             }
+            if (hasSelection()) closeInspector();
             dragging = true;
+            return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
-        if (selectedNode != null || selectedAbility != null) {
-            return super.mouseDragged(mouseX, mouseY, button, dx, dy);
-        }
         if (dragging && button == 0) {
             panX += dx;
             panY += dy;
@@ -131,12 +160,19 @@ public class SkilltreeScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+        updateInspectorAnimation();
         this.renderBackground(gfx);
         renderTreeBackdrop(gfx);
-        renderSkillPointHeader(gfx);
-        hoveredNode = findNodeAt(mouseX, mouseY);
-        hoveredAbility = findAbilityAt(mouseX, mouseY);
+        boolean overCanvas = mouseY >= 36 && mouseY < height - 23
+                && !(legendOpen && isOverLegend(mouseX, mouseY))
+                && !(hasSelection() && isOverInspector(mouseX, mouseY))
+                && children().stream().noneMatch(child -> child.isMouseOver(mouseX, mouseY));
+        hoveredNode = overCanvas ? findNodeAt(mouseX, mouseY) : null;
+        hoveredAbility = overCanvas ? findAbilityAt(mouseX, mouseY) : null;
+        gfx.enableScissor(0, 36, width, height - 23);
         drawGraph(gfx);
+        gfx.disableScissor();
+        renderSkillPointHeader(gfx);
         renderUnlockFailure(gfx);
         if (hoveredNode != null && selectedNode == null && selectedAbility == null) {
             renderNodeTooltip(gfx, hoveredNode, mouseX, mouseY);
@@ -147,43 +183,102 @@ public class SkilltreeScreen extends Screen {
             renderAbilityOverlay(gfx, selectedAbility);
         }
         super.render(gfx, mouseX, mouseY, partialTicks);
+        if (legendOpen) renderLegend(gfx);
     }
 
     private void renderSkillPointHeader(GuiGraphics gfx) {
-        int remaining = SkilltreeClientState.getCurrentSkillPoints();
-        Component pointsText = Component.literal("Skill Points  ")
-                .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(String.valueOf(remaining)).withStyle(ChatFormatting.GOLD));
-        int panelWidth = font.width(pointsText) + 16;
-        gfx.fill(7, 6, 7 + panelWidth, 24, 0xAA080B10);
-        gfx.fill(7, 6, 9, 24, highlightSkillPoints ? 0xFFFF4545 : 0xFFFFC857);
-        if (highlightSkillPoints) {
-            gfx.fill(5, 4, 7 + panelWidth + 2, 6, 0xFFFF4545);
-            gfx.fill(5, 24, 7 + panelWidth + 2, 26, 0xFFFF4545);
-            gfx.fill(5, 4, 7, 26, 0xFFFF4545);
-            gfx.fill(7 + panelWidth, 4, 7 + panelWidth + 2, 26, 0xFFFF4545);
+        gfx.fill(0, 0, width, 36, SkillUi.BACKGROUND);
+        gfx.fill(0, 35, width, 36, SkillUi.BORDER);
+        String points = "Skill Points: " + SkilltreeClientState.getCurrentSkillPoints();
+        int pointsX = width - font.width(points) - 32;
+        gfx.fill(pointsX - 1, 7, width - 11, 29, highlightSkillPoints ? BLOCKED : SkillUi.BORDER);
+        gfx.fill(pointsX, 8, width - 12, 28, SkillUi.SURFACE);
+        gfx.drawString(font, points, pointsX + 10, 14, SkillUi.TEXT, false);
+        gfx.fill(0, height - 23, width, height, SkillUi.BACKGROUND);
+        gfx.drawString(font, "Legend", 38, height - 15, SkillUi.MUTED, false);
+        String zoomLabel = Math.round(zoom * 100) + "%";
+        gfx.drawString(font, zoomLabel, width - font.width(zoomLabel) - 14, height - 15, SkillUi.ACCENT, false);
+    }
+
+    private static String displayName(String value) {
+        StringBuilder name = new StringBuilder();
+        for (String word : value.replaceAll("[_/:.\\-]+", " ").split(" +")) {
+            if (word.isEmpty()) continue;
+            if (!name.isEmpty()) name.append(' ');
+            name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
         }
-        gfx.drawString(font, pointsText, 14, 11, 0xFFFFFF, true);
-        Component hint = Component.literal("Drag to pan  •  Scroll to zoom")
-                .withStyle(ChatFormatting.DARK_GRAY);
-        gfx.drawString(font, hint, width - font.width(hint) - 10, 11, 0xFFFFFF, false);
+        return name.toString();
+    }
+
+    private void renderInspectorHeading(GuiGraphics gfx, Component title, ResourceLocation icon) {
+        int x = inspectorX() + 12;
+        int y = inspectorY();
+        if (icon != null) {
+            gfx.blit(icon, x, y + 5, NODE_ICON_SIZE, NODE_ICON_SIZE, 0, 0,
+                    NODE_ICON_SIZE, NODE_ICON_SIZE, NODE_ICON_SIZE, NODE_ICON_SIZE);
+            x += NODE_ICON_SIZE + 6;
+        }
+        int availableWidth = inspectorX() + inspectorWidth() - 30 - x;
+        gfx.drawString(font, font.plainSubstrByWidth(title.getString(), availableWidth),
+                x, y + 10, SkillUi.TEXT, false);
+    }
+
+    private Set<PathNode> prerequisiteChain(PathNode focus) {
+        Set<PathNode> visited = new HashSet<>();
+        if (focus == null) return visited;
+        ArrayDeque<PathNode> pending = new ArrayDeque<>();
+        pending.add(focus);
+        while (!pending.isEmpty()) {
+            PathNode current = pending.removeFirst();
+            if (!visited.add(current)) continue;
+            SkillNode node = current.ability() ? null : SkillNodeRegistry.get(current.id());
+            AbilityNode ability = current.ability() ? AbilityNodeRegistry.get(current.id()) : null;
+            List<ResourceLocation> parents = node != null ? node.getLinks()
+                    : ability != null ? ability.getLinks() : List.of();
+            for (ResourceLocation id : parents) {
+                if (SkillNodeRegistry.get(id) != null) pending.add(new PathNode(id, false));
+                else if (current.ability() && AbilityNodeRegistry.get(id) != null) {
+                    pending.add(new PathNode(id, true));
+                }
+            }
+        }
+        return visited;
+    }
+
+    private int pathEmphasis(int color, boolean focused, boolean traced) {
+        if (traced) {
+            if (color == LOCKED_PATH) return SkillUi.MUTED;
+            return mixColor(color, SkillUi.TEXT, 0.2f);
+        }
+        return focused ? mixColor(color, SkillUi.BACKGROUND, 0.45f) : color;
+    }
+
+    private static int mixColor(int from, int to, float amount) {
+        int red = (int) (((from >> 16) & 255) * (1 - amount) + ((to >> 16) & 255) * amount);
+        int green = (int) (((from >> 8) & 255) * (1 - amount) + ((to >> 8) & 255) * amount);
+        int blue = (int) ((from & 255) * (1 - amount) + (to & 255) * amount);
+        return 0xFF000000 | red << 16 | green << 8 | blue;
     }
 
     private void renderTreeBackdrop(GuiGraphics gfx) {
-        gfx.fill(0, 0, width, height, 0xD00B0E14);
+        gfx.fill(0, 0, width, height, SkillUi.BACKGROUND);
         int spacing = Math.max(16, (int) (GRID_SIZE * zoom));
         int offsetX = Math.floorMod((int) panX + width / 2, spacing);
         int offsetY = Math.floorMod((int) panY + height / 2, spacing);
         for (int x = offsetX; x < width; x += spacing) {
-            gfx.fill(x, 0, x + 1, height, 0x182A3442);
+            for (int y = offsetY; y < height; y += spacing) {
+                gfx.fill(x, y, x + 1, y + 1, 0x30555B63);
+            }
         }
-        for (int y = offsetY; y < height; y += spacing) {
-            gfx.fill(0, y, width, y + 1, 0x182A3442);
-        }
-        gfx.fill(0, 0, width, 1, 0x8053647A);
     }
 
     private void drawGraph(GuiGraphics gfx) {
+        PathNode focus = hoveredNode != null ? new PathNode(hoveredNode.getId(), false)
+                : hoveredAbility != null ? new PathNode(hoveredAbility.getId(), true)
+                : selectedNode != null ? new PathNode(selectedNode.getId(), false)
+                : selectedAbility != null ? new PathNode(selectedAbility.getId(), true) : null;
+        Set<PathNode> chain = prerequisiteChain(focus);
+        List<Connection> connections = new ArrayList<>();
         for (SkillNode node : activeSkillNodes()) {
             int[] p1 = worldToScreen(node.getX(), node.getY());
             for (ResourceLocation neighborId : node.getLinks()) {
@@ -193,8 +288,13 @@ public class SkilltreeScreen extends Screen {
                 boolean bothUnlocked =
                         SkilltreeClientState.isUnlocked(node.getId()) &&
                                 SkilltreeClientState.isUnlocked(neighbor.getId());
-                int linkColor = bothUnlocked ? 0xFF6EDC8A : 0xFF4A5361;
-                drawConnection(gfx, p1[0], p1[1], p2[0], p2[1], linkColor);
+                int linkColor = bothUnlocked ? UNLOCKED
+                        : isLockedByExclusivity(node) ? BLOCKED
+                        : getNodeColor(node) == AVAILABLE && SkilltreeClientState.isUnlocked(neighborId)
+                        ? AVAILABLE : LOCKED_PATH;
+                boolean traced = chain.contains(new PathNode(node.getId(), false));
+                connections.add(new Connection(p1[0], p1[1], p2[0], p2[1],
+                        pathEmphasis(linkColor, focus != null, traced), traced));
             }
         }
         for (AbilityNode ability : AbilityNodeRegistry.all()) {
@@ -204,31 +304,32 @@ public class SkilltreeScreen extends Screen {
                 AbilityNode ability2 = AbilityNodeRegistry.get(link);
                 if (node != null) {
                     int[] p2 = worldToScreen(node.getX(), node.getY());
-                    drawConnection(gfx, p1[0], p1[1], p2[0], p2[1], 0xFF6579C7);
+                    boolean traced = chain.contains(new PathNode(ability.getId(), true));
+                    connections.add(new Connection(p1[0], p1[1], p2[0], p2[1],
+                            pathEmphasis(abilityPathColor(ability, link), focus != null, traced), traced));
                 } else if (ability2 != null) {
                     int[] p2 = worldToScreen(ability2.getX(), ability2.getY());
-                    drawConnection(gfx, p1[0], p1[1], p2[0], p2[1], 0xFF6579C7);
+                    boolean traced = chain.contains(new PathNode(ability.getId(), true));
+                    connections.add(new Connection(p1[0], p1[1], p2[0], p2[1],
+                            pathEmphasis(abilityPathColor(ability, link), focus != null, traced), traced));
                 }
+            }
+        }
+        // Draw the traced chain last so unrelated crossing lines cannot obscure it.
+        for (boolean traced : new boolean[]{false, true}) {
+            for (Connection connection : connections) {
+                if (connection.traced() != traced) continue;
+                drawConnection(gfx, connection.x1(), connection.y1(), connection.x2(), connection.y2(), connection.color());
             }
         }
         for (AbilityNode ability : AbilityNodeRegistry.all()) {
             int[] pos = worldToScreen(ability.getX(), ability.getY());
             int radius = getRenderedNodeRadius(ABILITY_RADIUS);
-            boolean unlocked = SkilltreeClientState.isAbilityUnlocked(ability.getId());
-            int color;
-            if (ability.getId().equals(highlightedAbility)) {
-                color = 0xFFFF4545;
-            } else if (ability == selectedAbility) {
-                color = 0xFFAA8833;
-            } else if (ability == hoveredAbility) {
-                color = 0xFF8888AA;
-            } else if (unlocked) {
-                color = 0xFF3399FF;
-            } else {
-                color = 0xFF223355;
-            }
+            int color = SkilltreeClientState.isAbilityUnlocked(ability.getId()) ? UNLOCKED
+                    : abilityRequirementsMet(ability) ? AVAILABLE : UNAVAILABLE;
             renderNodeFrame(gfx, pos[0], pos[1], radius, color,
-                    ability == hoveredAbility, ability == selectedAbility, true);
+                    ability == hoveredAbility || ability.getId().equals(highlightedAbility),
+                    ability == selectedAbility);
             ResourceLocation icon = ability.getIcon();
             if (icon != null) {
                 int size = getRenderedNodeIconSize();
@@ -242,7 +343,7 @@ public class SkilltreeScreen extends Screen {
             int radius = getRenderedNodeRadius(NODE_RADIUS);
             int color = getNodeColor(node);
             renderNodeFrame(gfx, pos[0], pos[1], radius, color,
-                    node == hoveredNode, node == selectedNode, false);
+                    node == hoveredNode || node.getId().equals(highlightedNode), node == selectedNode);
             ResourceLocation icon = node.getIcons();
             if (icon != null) {
                 int size = getRenderedNodeIconSize();
@@ -256,28 +357,43 @@ public class SkilltreeScreen extends Screen {
                         NODE_ICON_SIZE, NODE_ICON_SIZE
                 );
             }
+            renderCostBadge(gfx, pos[0], pos[1], radius, node.getCost());
         }
     }
 
+    private void renderCostBadge(GuiGraphics gfx, int cx, int cy, int radius, int cost) {
+        if (cost <= 1) return;
+        String label = Integer.toString(cost);
+        float scale = 0.75f;
+        gfx.pose().pushPose();
+        gfx.pose().translate(cx + radius - 3, cy + radius - 3, 0);
+        gfx.pose().scale(scale, scale, 1);
+        int badgeWidth = font.width(label);
+        gfx.fill(-2, -1, badgeWidth + 2, font.lineHeight, SkillUi.BACKGROUND);
+        gfx.drawString(font, label, 0, 0, SkillUi.TEXT, false);
+        gfx.pose().popPose();
+    }
+
     private void renderNodeFrame(GuiGraphics gfx, int cx, int cy, int radius, int color,
-                                 boolean hovered, boolean selected, boolean ability) {
-        int glow = ability ? 0x554B79D8 : 0x554FCB72;
+                                 boolean hovered, boolean selected) {
         if (hovered || selected) {
-            int spread = selected ? 5 : 3;
+            int spread = selected ? 4 : 3;
             gfx.fill(cx - radius - spread, cy - radius - spread,
-                    cx + radius + spread, cy + radius + spread, glow);
+                    cx + radius + spread, cy + radius + spread, SkillUi.TEXT);
+            gfx.fill(cx - radius - spread + 1, cy - radius - spread + 1,
+                    cx + radius + spread - 1, cy + radius + spread - 1, SkillUi.BACKGROUND);
         }
-        gfx.fill(cx - radius - 2, cy - radius, cx + radius + 2, cy + radius, 0xAA05070A);
-        gfx.fill(cx - radius, cy - radius - 2, cx + radius, cy + radius + 2, 0xAA05070A);
-        int border = selected ? 0xFFFFD36A : hovered ? 0xFFE4EBF5 : ability ? 0xFF829BEB : 0xFF778394;
-        gfx.fill(cx - radius - 1, cy - radius - 1, cx + radius + 1, cy + radius + 1, border);
-        gfx.fill(cx - radius + 1, cy - radius + 1, cx + radius - 1, cy + radius - 1, color);
-        gfx.fill(cx - radius + 2, cy - radius + 2, cx + radius - 2, cy - radius + 4, 0x35FFFFFF);
+        gfx.fill(cx - radius - 1, cy - radius - 1, cx + radius + 1, cy + radius + 1, color);
+        gfx.fill(cx - radius + 1, cy - radius + 1, cx + radius - 1, cy + radius - 1, SkillUi.SURFACE);
     }
 
     private void renderNodeTooltip(GuiGraphics gfx, SkillNode node, int mouseX, int mouseY) {
         List<Component> tooltip = new ArrayList<>();
         tooltip.add(node.getTitle());
+        String status = skillStatus(node);
+        if (!status.equals("Not enough skill points")) {
+            tooltip.add(Component.literal(status).withStyle(ChatFormatting.GRAY));
+        }
         String desc = node.getDescription().getString();
         List<FormattedText> wrapped = font.getSplitter().splitLines(
                 desc,
@@ -288,9 +404,9 @@ public class SkilltreeScreen extends Screen {
             tooltip.add(Component.literal(ft.getString()).withStyle(ChatFormatting.GRAY));
         }
         tooltip.add(Component.literal("Cost: " + node.getCost())
-                .withStyle(ChatFormatting.DARK_AQUA));
+                .withStyle(ChatFormatting.GRAY));
         if (!node.getPrereqAttributes().isEmpty()) {
-            tooltip.add(Component.literal("Requirements:")
+            tooltip.add(Component.literal("Stat Requirements:")
                     .withStyle(ChatFormatting.GOLD));
             assert Minecraft.getInstance().player != null;
             Minecraft.getInstance().player.getCapability(PlayerStatsProvider.PLAYER_STATS)
@@ -298,7 +414,7 @@ public class SkilltreeScreen extends Screen {
                         int current = stats.getAttributeLevel(attr);
                         boolean ok = current >= required;
                         tooltip.add(
-                                Component.literal(" - " + attr + ": " + current + "/" + required)
+                                Component.literal(" - " + displayName(attr) + ": " + current + "/" + required)
                                         .withStyle(ok ? ChatFormatting.GREEN : ChatFormatting.RED)
                         );
                     }));
@@ -317,21 +433,19 @@ public class SkilltreeScreen extends Screen {
     }
 
     private void renderNodeOverlay(GuiGraphics gfx, SkillNode node) {
-        if (isLockedByExclusivity(node)) {
-            return;
-        }
-        int x = (width - OVERLAY_WIDTH) / 2;
-        int y = (height - OVERLAY_HEIGHT) / 2;
-        gfx.fill(0, 0, width, height, 0x88000000);
+        int x = inspectorX();
+        int y = inspectorY();
         renderOverlayPanel(gfx, x, y);
-        gfx.drawCenteredString(font, node.getTitle(), x + OVERLAY_WIDTH / 2, y + 10, 0xFFFFFF);
-        gfx.drawWordWrap(font, node.getDescription(), x + 10, y + 30, OVERLAY_WIDTH - 20, 0xDDDDDD);
-        final int[] textY = {y + 95};
+        renderInspectorHeading(gfx, node.getTitle(), node.getIcons());
+        beginDetailBody(gfx, x, y);
+        gfx.drawWordWrap(font, node.getDescription(), x + 16, y + 32, inspectorWidth() - 32, SkillUi.MUTED);
+        int descriptionHeight = font.split(node.getDescription(), inspectorWidth() - 32).size() * font.lineHeight;
+        final int[] textY = {y + 32 + descriptionHeight + 16};
         gfx.drawString(
                 font,
                 Component.literal("Cost: " + node.getCost() + " skill points")
-                        .withStyle(ChatFormatting.AQUA),
-                x + 10,
+                        .withStyle(ChatFormatting.GRAY),
+                x + 16,
                 textY[0],
                 0xAAAAAA
         );
@@ -339,9 +453,9 @@ public class SkilltreeScreen extends Screen {
         if (!node.getPrereqAttributes().isEmpty()) {
             gfx.drawString(
                     font,
-                    Component.literal("Requirements:")
+                    Component.literal("Stat Requirements:")
                             .withStyle(ChatFormatting.GOLD),
-                    x + 10,
+                    x + 16,
                     textY[0],
                     0xFFFFFF
             );
@@ -353,135 +467,276 @@ public class SkilltreeScreen extends Screen {
                         boolean ok = current >= required;
 
                         Component line = Component.literal(
-                                " - " + attr + ": " + current + "/" + required
+                                " - " + displayName(attr) + ": " + current + "/" + required
                         ).withStyle(ok ? ChatFormatting.GREEN : ChatFormatting.RED);
 
-                        gfx.drawString(font, line, x + 10, textY[0], 0xFFFFFF);
-                        textY[0] += 12;
+                        gfx.drawWordWrap(font, line, x + 16, textY[0], inspectorWidth() - 32, SkillUi.TEXT);
+                        textY[0] += font.split(line, inspectorWidth() - 32).size() * font.lineHeight + 3;
                     }));
         }
+        textY[0] = renderPrerequisites(gfx, node.getLinks(), x, textY[0], false);
+        if (!node.getExclusiveWith().isEmpty()) {
+            gfx.drawString(font, "Mutually exclusive with:", x + 16, textY[0], SkillUi.MUTED, false);
+            textY[0] += 12;
+            for (ResourceLocation id : node.getExclusiveWith()) {
+                SkillNode other = SkillNodeRegistry.get(id);
+                Component name = other == null ? Component.literal(id.toString()) : other.getTitle();
+                gfx.drawWordWrap(font, name, x + 16, textY[0], inspectorWidth() - 32,
+                        SkilltreeClientState.isUnlocked(id) ? BLOCKED : SkillUi.MUTED);
+                textY[0] += font.split(name, inspectorWidth() - 32).size() * font.lineHeight + 3;
+            }
+        }
+        endDetailBody(gfx, y, textY[0]);
+        updateUnlockButton(skillStatus(node), getNodeColor(node) == AVAILABLE);
     }
 
     private void renderAbilityOverlay(GuiGraphics gfx, AbilityNode ability) {
-        int x = (width - OVERLAY_WIDTH) / 2;
-        int y = (height - OVERLAY_HEIGHT) / 2;
-        gfx.fill(0, 0, width, height, 0x88000000);
+        int x = inspectorX();
+        int y = inspectorY();
         renderOverlayPanel(gfx, x, y);
-        gfx.drawCenteredString(font, ability.getTitle(), x + OVERLAY_WIDTH / 2, y + 10, 0xFFFFFF);
-        int textY = y + 30;
+        renderInspectorHeading(gfx, ability.getTitle(), ability.getIcon());
+        beginDetailBody(gfx, x, y);
+        int textY = y + 32;
         if (ability.getDescription() != null) {
-            gfx.drawWordWrap(font, ability.getDescription(), x + 10, textY, OVERLAY_WIDTH - 20, 0xDDDDDD);
-            textY += 60;
+            gfx.drawWordWrap(font, ability.getDescription(), x + 16, textY, inspectorWidth() - 32, 0xDDDDDD);
+            textY += font.split(ability.getDescription(), inspectorWidth() - 32).size() * font.lineHeight + 16;
         }
         gfx.drawString(font,
                 Component.literal("Cooldown: " + ability.getCooldown() / 20 + " seconds")
-                        .withStyle(ChatFormatting.AQUA),
-                x + 10,
+                        .withStyle(ChatFormatting.GRAY),
+                x + 16,
                 textY,
                 0xFFFFFF);
         textY += 15;
-        if (!ability.getLinks().isEmpty()) {
-            gfx.drawString(font,
-                    Component.literal("Requires:")
-                            .withStyle(ChatFormatting.GOLD),
-                    x + 10,
-                    textY,
-                    0xFFFFFF);
-            textY += 12;
-            for (ResourceLocation parent : ability.getLinks()) {
-                SkillNode parentNode = SkillNodeRegistry.get(parent);
-                AbilityNode parentAbility = AbilityNodeRegistry.get(parent);
-                Component name = parentNode != null
-                        ? parentNode.getTitle()
-                        : parentAbility != null
-                        ? parentAbility.getTitle()
-                        : Component.literal(parent.toString());
-                gfx.drawString(font,
-                        Component.literal(" - ").append(name),
-                        x + 10,
-                        textY,
-                        0xFFFFFF);
-                textY += 12;
-            }
+        textY = renderPrerequisites(gfx, ability.getLinks(), x, textY, true);
+        endDetailBody(gfx, y, textY);
+        boolean unlocked = SkilltreeClientState.isAbilityUnlocked(ability.getId());
+        updateUnlockButton(unlocked ? "Already unlocked"
+                : abilityRequirementsMet(ability) ? "Ready to unlock" : "Unlock prerequisites first",
+                !unlocked && abilityRequirementsMet(ability));
+    }
+
+    private void beginDetailBody(GuiGraphics gfx, int x, int y) {
+        gfx.enableScissor(x + 16, y + 30, x + inspectorWidth() - 16, y + inspectorHeight() - 40);
+        gfx.pose().pushPose();
+        gfx.pose().translate(0, -detailScroll, 0);
+    }
+
+    private void endDetailBody(GuiGraphics gfx, int y, int bottom) {
+        gfx.pose().popPose();
+        gfx.disableScissor();
+        maxDetailScroll = Math.max(0, bottom - (y + inspectorHeight() - 44));
+        detailScroll = Math.min(detailScroll, maxDetailScroll);
+        if (maxDetailScroll > 0) {
+            int trackX = inspectorX() + inspectorWidth() - 9;
+            int trackHeight = inspectorHeight() - 70;
+            int thumbY = y + 30 + (trackHeight - 16) * detailScroll / maxDetailScroll;
+            gfx.fill(trackX, y + 30, trackX + 2, y + 30 + trackHeight, SkillUi.BORDER);
+            gfx.fill(trackX, thumbY, trackX + 2, thumbY + 16, SkillUi.ACCENT);
         }
     }
 
     private void renderOverlayPanel(GuiGraphics gfx, int x, int y) {
-        gfx.fill(x - 2, y - 2, x + OVERLAY_WIDTH + 2, y + OVERLAY_HEIGHT + 2, 0x99000000);
-        gfx.fill(x - 1, y - 1, x + OVERLAY_WIDTH + 1, y + OVERLAY_HEIGHT + 1, PANEL_BORDER);
-        gfx.fill(x, y, x + OVERLAY_WIDTH, y + OVERLAY_HEIGHT, PANEL_BACKGROUND);
-        gfx.fill(x, y, x + OVERLAY_WIDTH, y + 3, 0xFF6C83A3);
-        gfx.fill(x + 8, y + 23, x + OVERLAY_WIDTH - 8, y + 24, 0x6653647A);
+        SkillUi.panel(gfx, x, y, inspectorWidth(), inspectorHeight());
+        gfx.fill(x, y, x + inspectorWidth(), y + 25, SkillUi.HEADER);
+        gfx.fill(x + 12, y + 29, x + inspectorWidth() - 12, y + inspectorHeight() - 40, SkillUi.SURFACE);
+    }
+
+    private boolean hasSelection() {
+        return selectedNode != null || selectedAbility != null;
+    }
+
+    private boolean usesSidebar() {
+        return width >= 560;
+    }
+
+    private int inspectorWidth() {
+        return Math.min(OVERLAY_WIDTH, width - 24);
+    }
+
+    private int inspectorHeight() {
+        return Math.min(300, height - 72);
+    }
+
+    private int inspectorX() {
+        return inspectorRestX() + inspectorSlideOffset;
+    }
+
+    private int inspectorRestX() {
+        return usesSidebar() ? width - inspectorWidth() - 12 : (width - inspectorWidth()) / 2;
+    }
+
+    private void updateInspectorAnimation() {
+        if (!hasSelection()) return;
+        float progress = Mth.clamp((Util.getMillis() - inspectorOpenedAt) / INSPECTOR_SLIDE_MS, 0.0f, 1.0f);
+        float remaining = 1.0f - progress;
+        if (inspectorClosing && (progress >= 1.0f || !usesSidebar())) {
+            finishClosingInspector();
+            return;
+        }
+        float eased = 1.0f - remaining * remaining * remaining;
+        int targetOffset = inspectorClosing ? inspectorWidth() + 16 : 0;
+        inspectorSlideOffset = usesSidebar() ? Math.round(inspectorAnimationStartOffset
+                + (targetOffset - inspectorAnimationStartOffset) * eased) : 0;
+        if (unlockButton != null) unlockButton.setX(inspectorX() + inspectorWidth() - 96);
+        if (inspectorCloseButton != null) inspectorCloseButton.setX(inspectorX() + inspectorWidth() - 23);
+    }
+
+    private int inspectorY() {
+        return usesSidebar() ? 40 : (height - inspectorHeight()) / 2;
+    }
+
+    private boolean isOverInspector(double x, double y) {
+        return x >= inspectorX() - 1 && x <= inspectorX() + inspectorWidth() + 1
+                && y >= inspectorY() - 1 && y <= inspectorY() + inspectorHeight() + 1;
+    }
+
+    private void revealSelection(float x, float y) {
+        if (!usesSidebar()) return;
+        int[] position = worldToScreen(x, y);
+        // Move only a selection that the actual popup rectangle would cover.
+        // Nodes above or below it keep their existing position.
+        int margin = 24;
+        if (position[0] >= inspectorRestX() - margin
+                && position[0] <= inspectorRestX() + inspectorWidth() + margin
+                && position[1] >= inspectorY() - margin
+                && position[1] <= inspectorY() + inspectorHeight() + margin) {
+            panX += inspectorRestX() - margin - position[0];
+        }
+    }
+
+    private void closeInspector() {
+        if (!hasSelection() || inspectorClosing) return;
+        if (!usesSidebar()) {
+            finishClosingInspector();
+            return;
+        }
+        inspectorClosing = true;
+        inspectorAnimationStartOffset = inspectorSlideOffset;
+        inspectorOpenedAt = Util.getMillis();
+        if (unlockButton != null) {
+            unlockButton.active = false;
+            unlockButton.setTooltip(null);
+        }
+        if (inspectorCloseButton != null) {
+            inspectorCloseButton.active = false;
+            inspectorCloseButton.setTooltip(null);
+        }
+    }
+
+    private void finishClosingInspector() {
+        selectedNode = null;
+        selectedAbility = null;
+        unlockButton = null;
+        inspectorCloseButton = null;
+        inspectorSlideOffset = 0;
+        inspectorAnimationStartOffset = 0;
+        inspectorClosing = false;
+        clearWidgets();
+        rebuildTreeTabs();
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == 256 && legendOpen) {
+            legendOpen = false;
+            return true;
+        }
+        if (keyCode == 256 && hasSelection()) {
+            closeInspector();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    private int renderPrerequisites(GuiGraphics gfx, List<ResourceLocation> links, int x, int y, boolean ability) {
+        if (links.isEmpty()) return y;
+        gfx.drawString(font, "Required Skills:", x + 16, y, SkillUi.ACCENT, false);
+        y += 12;
+        for (ResourceLocation id : links) {
+            SkillNode node = SkillNodeRegistry.get(id);
+            AbilityNode parentAbility = AbilityNodeRegistry.get(id);
+            Component name = node != null ? node.getTitle()
+                    : parentAbility != null ? parentAbility.getTitle() : Component.literal(id.toString());
+            boolean met = SkilltreeClientState.isUnlocked(id)
+                    || (ability && SkilltreeClientState.isAbilityUnlocked(id));
+            Component line = Component.literal(met ? "+ " : "- ").append(name);
+            gfx.drawWordWrap(font, line, x + 16, y, inspectorWidth() - 32, met ? UNLOCKED : BLOCKED);
+            y += font.split(line, inspectorWidth() - 32).size() * font.lineHeight + 3;
+        }
+        return y;
+    }
+
+    private void updateUnlockButton(String status, boolean canUnlock) {
+        if (unlockButton == null || inspectorClosing) return;
+        unlockButton.setTooltip(Tooltip.create(Component.literal(status)));
+        unlockButton.active = canUnlock;
     }
 
     private void rebuildOverlayButtons() {
-        clearWidgets();
-        if (selectedNode == null) {
-            return;
-        }
-        int x = (width - OVERLAY_WIDTH) / 2;
-        int y = (height - OVERLAY_CONTENT_HEIGHT) / 2;
-        boolean alreadyUnlocked = SkilltreeClientState.isUnlocked(selectedNode.getId());
-        if (!alreadyUnlocked) {
-            addRenderableWidget(Button.builder(Component.literal("Unlock"), btn -> {
-                        if (!prepareSkillUnlock(selectedNode)) {
-                            selectedNode = null;
-                            clearWidgets();
-                            rebuildTreeTabs();
-                            return;
-                        }
-                        PacketHandler.CHANNEL.sendToServer(
-                                new ServerboundUnlockNodePacket(selectedNode.getId())
-                        );
-                        selectedNode = null;
-                        clearWidgets();
-                        rebuildTreeTabs();
-                    }).pos(x + OVERLAY_WIDTH / 2 - 40, y + OVERLAY_CONTENT_HEIGHT - 20)
-                    .size(80, 20)
-                    .build());
-        }
-        addRenderableWidget(Button.builder(Component.literal("Close"), btn -> {
-                    selectedNode = null;
-                    clearWidgets();
-                    rebuildTreeTabs();
-                }).pos(x + OVERLAY_WIDTH - 60, y - 5)
-                .size(50, 20)
-                .build());
+        rebuildInspectorButtons(false);
     }
 
     private void rebuildAbilityOverlayButtons() {
+        rebuildInspectorButtons(true);
+    }
+
+    private void rebuildInspectorButtons(boolean ability) {
+        if (unlockButton == null || inspectorClosing) {
+            inspectorAnimationStartOffset = unlockButton == null
+                    ? (usesSidebar() ? inspectorWidth() + 16 : 0) : inspectorSlideOffset;
+            inspectorOpenedAt = Util.getMillis();
+            inspectorSlideOffset = inspectorAnimationStartOffset;
+        }
+        inspectorClosing = false;
+        detailScroll = 0;
+        maxDetailScroll = 0;
+        dragging = false;
+        clearUnlockHighlights();
         clearWidgets();
-        if (selectedAbility == null) {
-            return;
+        addLegendButton();
+        int x = inspectorX();
+        int y = inspectorY();
+        unlockButton = addRenderableWidget(SkillUi.button(Component.literal("Unlock"), btn -> {
+            if (inspectorClosing) return;
+            if (ability ? !prepareAbilityUnlock(selectedAbility) : !prepareSkillUnlock(selectedNode)) return;
+            ResourceLocation id = ability ? selectedAbility.getId() : selectedNode.getId();
+            PacketHandler.CHANNEL.sendToServer(new ServerboundUnlockNodePacket(id));
+            closeInspector();
+        }).pos(x + inspectorWidth() - 96, y + inspectorHeight() - 28).size(80, 20).build());
+        unlockButton.active = ability
+                ? !SkilltreeClientState.isAbilityUnlocked(selectedAbility.getId()) && abilityRequirementsMet(selectedAbility)
+                : getNodeColor(selectedNode) == AVAILABLE;
+        inspectorCloseButton = addRenderableWidget(SkillUi.button(Component.literal("X"), btn -> closeInspector())
+                .pos(x + inspectorWidth() - 23, y + 5).size(18, 16).build());
+        inspectorCloseButton.setTooltip(Tooltip.create(Component.literal("Close details (Esc)")));
+    }
+
+    private void addLegendButton() {
+        Button help = addRenderableWidget(SkillUi.button(Component.literal("?"), btn -> legendOpen = !legendOpen)
+                .pos(12, height - 21).size(20, 18).build());
+        help.setTooltip(Tooltip.create(Component.literal("Show or hide the legend")));
+    }
+
+    private boolean isOverLegend(double x, double y) {
+        return x >= 12 && x <= 12 + Math.min(300, width - 24)
+                && y >= height - 158 && y <= height - 30;
+    }
+
+    private void renderLegend(GuiGraphics gfx) {
+        int x = 12;
+        int y = height - 158;
+        SkillUi.panel(gfx, x, y, Math.min(300, width - 24), 128);
+        gfx.drawString(font, "Node borders and paths", x + 12, y + 10, SkillUi.TEXT, false);
+        String[] labels = {"Unlocked", "Available to unlock",
+                "Unavailable: requirements or points missing", "Blocked: mutually exclusive"};
+        int[] colors = {UNLOCKED, AVAILABLE, UNAVAILABLE, BLOCKED};
+        for (int i = 0; i < labels.length; i++) {
+            int rowY = y + 30 + i * 15;
+            gfx.fill(x + 12, rowY, x + 20, rowY + 8, colors[i]);
+            gfx.drawString(font, labels[i], x + 26, rowY, SkillUi.TEXT, false);
         }
-        int x = (width - OVERLAY_WIDTH) / 2;
-        int y = (height - OVERLAY_CONTENT_HEIGHT) / 2;
-        boolean unlocked = SkilltreeClientState.isAbilityUnlocked(selectedAbility.getId());
-        if (!unlocked) {
-            addRenderableWidget(Button.builder(Component.literal("Unlock"), btn -> {
-                        if (!prepareAbilityUnlock(selectedAbility)) {
-                            selectedAbility = null;
-                            clearWidgets();
-                            rebuildTreeTabs();
-                            return;
-                        }
-                        PacketHandler.CHANNEL.sendToServer(
-                                new ServerboundUnlockNodePacket(selectedAbility.getId())
-                        );
-                        selectedAbility = null;
-                        clearWidgets();
-                        rebuildTreeTabs();
-                    }).pos(x + OVERLAY_WIDTH / 2 - 40, y + OVERLAY_CONTENT_HEIGHT - 20)
-                    .size(80, 20)
-                    .build());
-        }
-        addRenderableWidget(Button.builder(Component.literal("Close"), btn -> {
-                    selectedAbility = null;
-                    clearWidgets();
-                    rebuildTreeTabs();
-                }).pos(x + OVERLAY_WIDTH - 60, y - 5)
-                .size(50, 20)
-                .build());
+        gfx.drawString(font, "White outline: hover or selection", x + 12, y + 110, SkillUi.MUTED, false);
     }
 
     private int[] worldToScreen(float wx, float wy) {
@@ -529,37 +784,42 @@ public class SkilltreeScreen extends Screen {
         return node.getExclusiveWith().stream().anyMatch(SkilltreeClientState::isUnlocked);
     }
 
-    private int getNodeColor(SkillNode node) {
-        boolean unlocked = SkilltreeClientState.isUnlocked(node.getId());
-        boolean lockedByExclusivity = isLockedByExclusivity(node);
-        int color;
-        if (node.getId().equals(highlightedNode)) {
-            color = 0xFFFF4545;
-        } else if (lockedByExclusivity) {
-            color = 0xFFCC3333;
-        } else if (node == selectedNode) {
-            color = 0xFF999933;
-        } else if (node == hoveredNode) {
-            color = 0xFF777777;
-        } else if (unlocked) {
-            color = 0xFF44CC44;
-        } else {
-            int cost = node.getCost();
-            if (cost <= 1) {
-                color = 0xFF444444;
-            } else if (cost == 2) {
-                color = 0xFFFF6633;
-            } else if (cost == 3) {
-                color = 0xFF33CCCC;
-            } else {
-                color = 0xFFFFD700;
-            }
+    private String skillStatus(SkillNode node) {
+        if (SkilltreeClientState.isUnlocked(node.getId())) return "Already unlocked";
+        for (ResourceLocation id : node.getExclusiveWith()) {
+            if (!SkilltreeClientState.isUnlocked(id)) continue;
+            SkillNode blocker = SkillNodeRegistry.get(id);
+            return "Blocked by: " + (blocker == null ? id.toString() : blocker.getTitle().getString());
         }
-        return color;
+        if (SkilltreeClientState.getCurrentSkillPoints() < Math.max(0, node.getCost())) return "Not enough skill points";
+        if (!node.getLinks().stream().allMatch(SkilltreeClientState::isUnlocked)) return "Unlock prerequisites first";
+        if (!meetsClientAttributes(node)) return "Attribute requirements not met";
+        return "Ready to unlock";
+    }
+
+    private int getNodeColor(SkillNode node) {
+        if (SkilltreeClientState.isUnlocked(node.getId())) return UNLOCKED;
+        if (isLockedByExclusivity(node)) return BLOCKED;
+        return node.getLinks().stream().allMatch(SkilltreeClientState::isUnlocked)
+                && meetsClientAttributes(node)
+                && SkilltreeClientState.getCurrentSkillPoints() >= Math.max(0, node.getCost())
+                ? AVAILABLE : UNAVAILABLE;
+    }
+
+    private boolean abilityRequirementsMet(AbilityNode ability) {
+        return ability.getLinks().stream().allMatch(id -> SkilltreeClientState.isUnlocked(id)
+                || SkilltreeClientState.isAbilityUnlocked(id));
+    }
+
+    private int abilityPathColor(AbilityNode ability, ResourceLocation parent) {
+        boolean parentUnlocked = SkilltreeClientState.isUnlocked(parent) || SkilltreeClientState.isAbilityUnlocked(parent);
+        if (parentUnlocked && SkilltreeClientState.isAbilityUnlocked(ability.getId())) return UNLOCKED;
+        return parentUnlocked && abilityRequirementsMet(ability) ? AVAILABLE : LOCKED_PATH;
     }
 
     private boolean prepareSkillUnlock(SkillNode target) {
         clearUnlockHighlights();
+        if (SkilltreeClientState.isUnlocked(target.getId()) || isLockedByExclusivity(target)) return false;
         for (ResourceLocation parentId : target.getLinks()) {
             if (SkilltreeClientState.isUnlocked(parentId)) continue;
             SkillNode parent = SkillNodeRegistry.get(parentId);
@@ -598,6 +858,7 @@ public class SkilltreeScreen extends Screen {
 
     private boolean prepareAbilityUnlock(AbilityNode ability) {
         clearUnlockHighlights();
+        if (SkilltreeClientState.isAbilityUnlocked(ability.getId())) return false;
         for (ResourceLocation parentId : ability.getLinks()) {
             if (SkilltreeClientState.isUnlocked(parentId)
                     || SkilltreeClientState.isAbilityUnlocked(parentId)) continue;
@@ -632,7 +893,7 @@ public class SkilltreeScreen extends Screen {
         if (unlockFailureMessage == null) return;
         int messageWidth = Math.min(width - 40, font.width(unlockFailureMessage) + 20);
         int x = (width - messageWidth) / 2;
-        int y = height - 34;
+        int y = height - 46;
         gfx.fill(x - 2, y - 2, x + messageWidth + 2, y + 18, 0xCC000000);
         gfx.fill(x, y, x + messageWidth, y + 16, 0xE0421717);
         gfx.fill(x, y, x + 3, y + 16, 0xFFFF4545);
@@ -667,16 +928,21 @@ public class SkilltreeScreen extends Screen {
     }
 
     private void rebuildTreeTabs() {
+        addLegendButton();
         List<ResourceLocation> trees = SkillNodeRegistry.trees();
         if (trees.size() <= 1 || selectedNode != null || selectedAbility != null) {
             return;
         }
-        int x = 10;
-        int y = 28;
+        int x = 14;
+        int y = 44;
         for (ResourceLocation tree : trees) {
             String label = tree.toString();
             int buttonWidth = Math.min(140, Math.max(60, font.width(label) + 16));
-            Button button = addRenderableWidget(Button.builder(Component.literal(label), btn -> {
+            if (x + buttonWidth > width - 14 && x > 14) {
+                x = 14;
+                y += 26;
+            }
+            Button button = addRenderableWidget(SkillUi.button(Component.literal(label), btn -> {
                         activeTree = tree;
                         selectedNode = null;
                         selectedAbility = null;
@@ -687,7 +953,7 @@ public class SkilltreeScreen extends Screen {
                     .size(buttonWidth, 20)
                     .build());
             button.active = !tree.equals(activeTree);
-            x += buttonWidth + 4;
+            x += buttonWidth + 6;
         }
     }
 

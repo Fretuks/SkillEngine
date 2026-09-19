@@ -4,17 +4,16 @@ import net.fretux.skillengine.skilltree.AbilityNode;
 import net.fretux.skillengine.skilltree.AbilityNodeRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
 public class AbilitySlotsScreen extends Screen {
-    private static final int PANEL_WIDTH = 260;
-    private static final int MIN_PANEL_HEIGHT = 180;
+    private static final int PANEL_WIDTH = 280;
+    private static final int MIN_PANEL_HEIGHT = 204;
     private static final int SLOT_TEXT_RIGHT_PADDING = 8;
-    private static final int REBIND_BUTTON_WIDTH = 80;
+    private static final int REBIND_BUTTON_WIDTH = 62;
     public AbilitySlotsScreen() {
         super(Component.literal("Abilities"));
     }
@@ -24,16 +23,16 @@ public class AbilitySlotsScreen extends Screen {
         int x = (width - PANEL_WIDTH) / 2;
         int panelHeight = panelHeight();
         int y = (height - panelHeight) / 2;
-        int rowY = y + 40;
-        int buttonH = 20;
-        int buttonX = x + PANEL_WIDTH - REBIND_BUTTON_WIDTH - 15;
+        int rowY = y + 52;
+        int buttonH = 28;
+        int buttonX = x + PANEL_WIDTH - REBIND_BUTTON_WIDTH - 16;
         int slots = SkilltreeClientState.getAbilitySlots().length;
         for (int slot = 1; slot <= slots; slot++) {
             int currentSlot = slot;
-            addRenderableWidget(Button.builder(Component.literal("Rebind"), b -> openSelect(currentSlot))
-                    .pos(buttonX, rowY + (slot - 1) * 35).size(REBIND_BUTTON_WIDTH, buttonH).build());
+            addRenderableWidget(SkillUi.button(Component.literal("Rebind"), b -> openSelect(currentSlot))
+                    .pos(buttonX, rowY + (slot - 1) * 40).size(REBIND_BUTTON_WIDTH, buttonH).build());
         }
-        addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
+        addRenderableWidget(SkillUi.button(Component.literal("Close"), b -> onClose())
                 .pos(x + PANEL_WIDTH - 70, y + panelHeight - 28).size(60, 20).build());
     }
 
@@ -58,19 +57,19 @@ public class AbilitySlotsScreen extends Screen {
         int panelHeight = panelHeight();
         int y = (height - panelHeight) / 2;
         gfx.fill(0, 0, width, height, 0xAA000000);
-        gfx.fill(x, y, x + PANEL_WIDTH, y + panelHeight, 0xFF222222);
-        gfx.drawCenteredString(font, Component.literal("Ability Slots"), x + PANEL_WIDTH / 2, y + 12, 0xFFFFFF);
-        int rowY = y + 40;
+        SkillUi.panel(gfx, x, y, PANEL_WIDTH, panelHeight);
+        SkillUi.heading(gfx, font, "ABILITY LOADOUT", "Prepare your active skills", x, y);
+        int rowY = y + 52;
         int slots = SkilltreeClientState.getAbilitySlots().length;
         for (int slot = 1; slot <= slots; slot++) {
-            drawSlotRow(gfx, x + 15, rowY + (slot - 1) * 35, slot, "Slot " + slot);
+            drawSlotRow(gfx, x + 16, rowY + (slot - 1) * 40, slot, "Slot " + slot);
         }
         super.render(gfx, mouseX, mouseY, partialTick);
     }
 
     private void drawSlotRow(GuiGraphics gfx, int x, int y, int slot, String label) {
-        String slotLabel = label + ":";
-        gfx.drawString(font, slotLabel, x, y + 6, 0xFFFFFF);
+        gfx.fill(x, y - 2, x + PANEL_WIDTH - 32, y + 32, SkillUi.SURFACE);
+        gfx.drawString(font, label.toUpperCase(java.util.Locale.ROOT), x + 8, y + 2, SkillUi.MUTED, false);
         ResourceLocation abilityId = SkilltreeClientState.getAbilityInSlot(slot);
         String title = "Empty";
         ResourceLocation icon = null;
@@ -84,21 +83,22 @@ public class AbilitySlotsScreen extends Screen {
             }
         }
         if (icon != null) {
-            int iconX = x + font.width(slotLabel) + 6;
-            gfx.blit(icon, iconX, y - 2, 0, 0, 20, 20, 20, 20);
-            int textX = iconX + 26;
-            gfx.drawString(font, fitTitle(title, textX), textX, y + 6, 0xDDDDDD);
+            int iconX = x + 8;
+            gfx.blit(icon, iconX, y + 13, 0, 0, 16, 16, 16, 16);
+            int textX = iconX + 22;
+            gfx.drawString(font, fitTitle(title, textX), textX, y + 17, SkillUi.TEXT);
         } else {
-            int textX = x + font.width(slotLabel) + 6;
-            gfx.drawString(font, fitTitle(title, textX), textX, y + 6, 0x888888);
+            int textX = x + 8;
+            gfx.drawString(font, fitTitle(title, textX), textX, y + 17, SkillUi.MUTED);
         }
     }
 
     private String fitTitle(String title, int textX) {
         int panelX = (width - PANEL_WIDTH) / 2;
-        int buttonX = panelX + PANEL_WIDTH - REBIND_BUTTON_WIDTH - 15;
+        int buttonX = panelX + PANEL_WIDTH - REBIND_BUTTON_WIDTH - 16;
         int availableWidth = buttonX - SLOT_TEXT_RIGHT_PADDING - textX;
-        if (availableWidth <= 0 || font.width(title) <= availableWidth) {
+        if (availableWidth <= 0) return "";
+        if (font.width(title) <= availableWidth) {
             return title;
         }
         String suffix = "...";
@@ -111,6 +111,6 @@ public class AbilitySlotsScreen extends Screen {
 
     private int panelHeight() {
         int slots = SkilltreeClientState.getAbilitySlots().length;
-        return Math.max(MIN_PANEL_HEIGHT, 80 + slots * 35);
+        return Math.max(MIN_PANEL_HEIGHT, 92 + slots * 40);
     }
 }
